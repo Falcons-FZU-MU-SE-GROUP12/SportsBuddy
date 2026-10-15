@@ -1,335 +1,354 @@
-# SportMate 前端起步包
+# 动搭 SportMate · 前端交付
 
-> 这是**已经接好后端**的 Vue 3 前端脚手架。拿到就能跑，跑起来就能看到真实数据。
-> 你的任务是在这个基础上改成你想要的样子——加页面、加路由、改样式都随意。
->
-> **后端不用你管**：项目已配好连同学的线上后端，你只需要 `npm install` + `npm run dev`。
+依据 `sportmate后端.zip`（FastAPI 后端 + 《前端对接文档》19 个接口）实现的前端，
+外加**领域类图**与**可交互界面原型**。三项交付物都在本目录下，打开即可看。
 
----
-
-## 一、先跑起来（3 步，约 2 分钟）
-
-> 需要 Node.js 18 以上（推荐 20/22）。检查：`node --version`
-
-### 1. 装依赖
-
-```bash
-npm install
-```
-
-> 慢的话用国内镜像：
-> ```bash
-> npm install --registry=https://registry.npmmirror.com
-> ```
-
-### 2. 启动
-
-```bash
-npm run dev
-```
-
-### 3. 打开浏览器
-
-```
-http://localhost:5173
-```
-
-看到登录页就成功了。**注册一个账号试一下**：用户名用字母数字下划线（3 位以上），
-密码 6 位以上，点「注册」→ 就能看到活动列表、一句话找局、发起活动都能用。
-
-> ⚠️ **不会自动弹浏览器**，需要你手动打开上面这个地址。
-> ⚠️ **启动后那个命令行窗口不能关**，关了服务就停了。
-
-### 关于后端（默认已配好，通常不用管）
-
-项目里的 `.env.development` 已经指向同学的**线上后端**：
-
-```
-VITE_API_BASE_URL=https://sportmate-backend-gm34.onrender.com
-```
-
-所以**你不需要装 Python、也不需要跑后端**。只有一个注意点：
-
-> 💤 后端跑在 Render 免费实例上，**15 分钟没人访问会休眠**。
-> 你隔一阵子第一次打开页面可能要等 **30~60 秒**才出数据，
-> 这是正常现象（前端会提示"服务器可能正在唤醒"），再点一下就好了。
-
-如果你想跑得更快更稳（改代码即时生效、没有唤醒等待），可以自己本地跑后端，
-看第五节「后端从哪来」的方式 1。
+> 关键特点：**零安装**。不需要 `npm install`，没有构建步骤，没有 `node_modules`。
+> 因为这台机器上没有外网，所以整个工程用原生 ES Module 写成，只依赖浏览器。
 
 ---
 
-## 二、这个起步包已经实现了什么
+## 一、30 秒跑起来
 
-打开页面你会看到一个完整可用的应用：
+```powershell
+# 方式 A：双击
+start.cmd
 
-| 功能 | 说明 |
-|---|---|
-| 注册 / 登录 | token 自动保存到 localStorage，刷新页面不会掉登录态 |
-| 信用分卡片 | 显示信用分、完成次数、爽约次数、评价均分 |
-| 一句话找局 | 输入「今晚想在旗山校区打篮球，新手可以吗」，自动识别项目/校区/水平并推荐 |
-| 活动列表 | 支持按项目、水平筛选，只显示还有空位的 |
-| 发起活动 | 表单含时间、地点、水平、人数、费用，发布后自动显示签到码 |
-| 活动详情弹层 | 参与者名单 + 各自签到状态 |
-| 签到 | 签到码签到 + 定位签到两种 |
-| 记录考勤 | 发起人勾选到场者，未勾选的自动记爽约扣分 |
-| 我的 | 我发起的 / 我报名的，可取消报名 |
-
-**建议你先点一遍**，把每个功能摸清楚，再决定怎么改。
-
----
-
-## 三、文件说明
-
-```
-frontend-starter/
-├── src/
-│   ├── api.js          ← 【重要】后端接口封装，所有请求都走它
-│   ├── App.vue         ← 主页面，所有界面和交互都在这里
-│   ├── main.js         ← 入口
-│   └── style.css       ← 全局样式（按钮、输入框基础样式）
-├── .env.development    ← 【改后端地址就改这里】
-├── .env.example        ← 环境变量说明
-├── 前端对接文档.md       ← 【接口手册，遇到问题查它】
-├── index.html
-├── vite.config.js
-└── package.json
+# 方式 B：命令行
+node tools/server.mjs          # 默认 http://127.0.0.1:5178
 ```
 
-### 两种改后端地址的方式
+然后打开：
 
-**方式 A**：改 `.env.development` 里的 `VITE_API_BASE_URL`（推荐，改完要重启 `npm run dev`）
-
-**方式 B**：直接改 `src/api.js` 第 21 行附近的 `BASE_URL`
-
----
-
-## 四、怎么调接口（不要自己写请求层）
-
-`src/api.js` 已经把 19 个接口都封装好了，直接用：
-
-```js
-import api from './api.js'
-
-// 认证（token 自动存、自动带）
-await api.login('zhangsan', 'secret123')
-await api.register({ username, password, nickname, skill_level: 'beginner' })
-await api.logout()
-const me = await api.getMe()
-
-// 基础数据
-const sports = await api.getSports()        // 下拉框数据源
-
-// 活动
-const list = await api.getActivities({ sport: '篮球', only_available: true })
-const detail = await api.getActivity(1)     // 带 token 且你是发起人时有 checkin_code
-await api.createActivity({ ... })
-await api.joinActivity(1, '带我一个')
-await api.leaveActivity(1)
-
-// 签到
-await api.checkinWithCode(1, '9572')
-await api.checkinWithLocation(1, lat, lng)
-
-// 考勤（发起人）：传【到场者】的 user_id 数组
-await api.recordAttendance(1, [3, 5])
-
-// 评价
-await api.createReview(1, { reviewee_id: 3, score: 5, tags: ['准时'] })
-
-// 匹配
-const res = await api.match({ sport: '篮球', campus: '旗山校区' })
-const nlp = await api.matchBySentence('今晚想打篮球')
-```
-
-### 错误处理
-
-所有错误都抛 `ApiError`，**`err.message` 就是后端返回的中文提示，直接显示给用户即可**：
-
-```js
-import api, { ApiError } from './api.js'
-
-try {
-  await api.joinActivity(id)
-} catch (e) {
-  if (e instanceof ApiError) {
-    alert(e.message)              // 例如「活动已满员」
-    if (e.status === 409) { ... } // 需要区分状态码时再用
-    if (e.isAuthError) { ... }    // 401 登录过期，已经自动清掉本地 token
-  }
-}
-```
-
-`App.vue` 里的 `run()` 函数就是一个统一的包装，可以照抄。
-
----
-
-## 五、后端从哪来（三种方式）
-
-> **默认已经配好了方式 1，你通常什么都不用做。** 下面是三种选择。
-
-### 方式 1：用同学的线上后端（默认，无需任何安装）
-
-项目里的 `.env.development` 已经指向它：
-
-```
-VITE_API_BASE_URL=https://sportmate-backend-gm34.onrender.com
-```
-
-- 接口文档：https://sportmate-backend-gm34.onrender.com/docs
-- 健康检查：https://sportmate-backend-gm34.onrender.com/health
-
-**优点**：你不用装 Python、不用跑第二个服务。
-**缺点**：Render 免费实例 **15 分钟没人访问会休眠**，冷启动要等 30~60 秒。
-
-### 方式 2：自己本地跑后端（最稳，改代码即时生效）
-
-需要 Python 3.10+：
-
-```bash
-git clone https://github.com/3054664804/sportmate-backend.git
-cd sportmate-backend/sportmate-backend     # 注意是两层目录
-pip install -r requirements.txt
-python -m uvicorn main:app --reload --port 8000
-```
-
-> 如果 clone 失败（仓库结构后来调整过），也可以直接找后端同学要项目压缩包。
-
-然后把 `.env.development` 里那行改成：
-
-```
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
-**改完必须重启 dev server**（Ctrl+C 停掉再 `npm run dev`）。
-
-不需要装数据库、不需要配环境变量——首次启动会自动建表并写入 10 个运动项目。
-
-### 方式 3：连同一个局域网里同学机器上的后端
-
-让后端同学用这个命令启动（**注意是 `0.0.0.0`，不是 `127.0.0.1`**）：
-
-```bash
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-他查自己的内网 IP：命令行运行 `ipconfig`，找 **IPv4 地址**（形如 `192.168.x.x`）。
-
-然后你把 `.env.development` 改成：
-
-```
-VITE_API_BASE_URL=http://192.168.x.x:8000
-```
-
-重启 `npm run dev` 即可。
-
-> ⚠️ 两件事：他要**允许 Windows 防火墙弹窗**；你们要在**同一个 WiFi**下。
-
-### 附：域名变了怎么办
-
-如果后端后来重新部署、域名有变化，把这两处同步改掉即可：
-
-| 文件 | 用途 |
-|---|---|
-| `.env.development` | 本地开发（`npm run dev`）用的地址 |
-| `.env.production` | 部署到公网（`npm run build`）用的地址 |
-
-改完本地开发要**重启 dev server**；部署则必须**重新构建**（见 `部署到公网.md`）。
-
----
-
-## 六、三个必须知道的坑
-
-### 坑 1：时间会差 8 小时 ⚠️ 最容易踩
-
-后端返回的时间是**不带时区的 UTC 串**：
-
-```
-"2026-10-12T06:14:07.169800"     ← 这是 UTC，对应北京时间 14:14
-```
-
-**必须补 `Z` 再解析**，否则浏览器会当成本地时间：
-
-```js
-// ✅ 正确
-new Date(iso + 'Z').toLocaleString('zh-CN')   // 显示 14:14
-
-// ❌ 错误：会显示 6:14
-new Date(iso).toLocaleString('zh-CN')
-```
-
-`App.vue` 里的 `fmtTime()` 已经处理了（还兼容已经带 Z 或带偏移的情况），直接用它。
-
-**提交时间时**反过来要给 UTC，用 `toISOString()` 最省事：
-
-```js
-// 用户在 datetime-local 里选了本地时间，比如 2026-10-12 14:00
-start_time: new Date(form.start_time).toISOString()   // → "2026-10-12T06:00:00.000Z" ✅
-```
-
-### 坑 2：创建活动不返回签到码
-
-`api.createActivity()` 返回的对象**没有 `checkin_code`**。
-需要在创建成功后再调一次 `api.getActivity(created.id)` 才拿得到。
-`App.vue` 里就是这么做的，看 `submitCreate()` 函数。
-
-### 坑 3：中文参数要 URL 编码
-
-如果你自己用 `fetch` 拼查询串，中文参数会直接请求失败：
-
-```js
-// ❌ 会报错
-fetch('/activities?sport=篮球')
-
-// ✅ 用 URLSearchParams（api.js 里就是这么做的）
-fetch('/activities?' + new URLSearchParams({ sport: '篮球' }))
-```
-
-用 `api.getActivities({ sport: '篮球' })` 就不用管这些。
-
----
-
-## 七、接下来可以做什么
-
-这个起步包**没有**路由和状态管理，是一个单页面的 demo。你可以：
-
-| 想做的 | 建议 |
-|---|---|
-| 加页面路由 | 装 `vue-router`，把 `App.vue` 里的各个 section 拆成独立页面 |
-| 拆组件 | 把 `App.vue` 里的「活动卡片」「详情弹层」拆成 `components/` 下的组件 |
-| 全局状态 | 装 `pinia`，把 `me`（当前用户）提到 store 里 |
-| UI 组件库 | 装 Element Plus / Naive UI，替换掉手写的样式 |
-| 移动端适配 | 这个应用主要在手机上用（签到、看活动），优先做响应式 |
-
-**改动时注意**：`api.js` 不要重写，那是已经调通的请求层；改界面就改 `App.vue` 或新建组件。
-
----
-
-## 八、排查问题
-
-| 现象 | 原因 | 解决 |
+| 交付物 | 地址 | 说明 |
 |---|---|---|
-| `npm` 报「因为在此系统上禁止运行脚本」 | Windows PowerShell 执行策略 | 用 `npm.cmd run dev` 代替 `npm run dev`；或管理员 PowerShell 里执行一次 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
-| `npm run dev` 后浏览器没反应 | 不会自动弹窗，且窗口可能报错了 | 手动打开 http://localhost:5173 ；看命令行里有没有 `VITE v5.x ready in ...` |
-| 页面能开但一直「加载中」或报错 | 后端没启动 | 浏览器打开 `后端地址/health` 确认 |
-| 控制台 `Failed to fetch` | 后端没启动 / 地址写错 | 检查 `.env.development` 里的地址，改完**要重启 dev server** |
-| 提示「服务器可能正在唤醒」 | Render 免费实例休眠 | 正常现象，等 30~60 秒重试 |
-| 一直 401 | token 过期 | 退出重新登录（`api.js` 会自动清掉过期 token） |
-| 时间显示比实际早 8 小时 | 没补 `Z` | 见第六节坑 1 |
-| 注册报「用户名 长度至少为 3 个字符」 | 格式不对 | 用户名只能字母数字下划线，≥3 位 |
-| 报名报「信用分低于 60」 | 信用分不足 | 换个账号试，或先参加活动把分赚回来 |
-| 定位签到失败 | 浏览器要求 HTTPS | 本地 `localhost` 可用；部署后需 HTTPS |
-| 5173 打不开，命令行显示 5174 | 端口被占用，Vite 自动换端口 | **以命令行里打印的地址为准** |
-| `npm install` 很慢 | 网络 | 换淘宝镜像：`npm install --registry=https://registry.npmmirror.com` |
+| **① 前端应用** | <http://127.0.0.1:5178/frontend/> | 11 个页面，默认用内置离线数据 |
+| **② 界面原型（可交互）** | <http://127.0.0.1:5178/prototype/screens.html> | 12 个画面并排，框里能直接点 |
+| **原型总览 / 接口覆盖表** | <http://127.0.0.1:5178/prototype/> | 交付物索引 + 19 个接口落在哪 |
+| **页面结构与跳转** | <http://127.0.0.1:5178/prototype/wireframe.html> | 信息架构图 + 路由表 |
+| **③ 领域类图** | <http://127.0.0.1:5178/docs/diagrams/class-diagram.html> | 15 个类 / 20 条关系，可缩放 |
+| **原型图（JPG）** | 本地目录 `out/prototype-jpg/` | 12 张单屏 + 1 张总览，可直接插进报告/PPT |
 
-**万能排查**：浏览器直接打开 `后端地址/docs`，用 **Try it out** 手动调同一个接口。
-如果那里成功而前端失败，问题一定在前端（地址、token、编码）。
+> ⚠️ 必须通过 `http://` 打开。浏览器出于安全策略禁止 `file://` 加载 ES Module，
+> 直接双击 `index.html` 会白屏（页面里已经写了这条提示）。
+>
+> ⚠️ 如果你的目录在仓库子路径下（例如 `src/frontend/`），访问地址要多一层前缀：
+> `http://127.0.0.1:5178/src/frontend/frontend/`。工程内部所有链接都是**相对路径**，
+> 因此换目录、换域名都不用改代码。
 
 ---
 
-## 九、接口手册
+## 一点五、团队成员怎么看到这个前端
 
-完整的 19 个接口说明、真实响应示例、字段含义、错误码对照，
-看同一个目录下的 **`前端对接文档.md`**。
+代码上传到 GitHub 之后，"别人怎么看"有三种办法，按省事程度排：
 
-遇到「这个字段是什么含义」「这个错误码怎么回事」先查它。
+### 办法 1：开 GitHub Pages（最推荐，队友点个链接就行）
+
+仓库是 public，所以直接在
+`Settings → Pages → Source: Deploy from a branch → main → / (root) → Save`。
+
+等 1~2 分钟，队友打开（本工程在 `src/frontend/`，所以要带上这层路径）：
+
+```
+https://falcons-fzu-mu-se-group12.github.io/SportsBuddy/src/frontend/frontend/          ← 前端应用
+https://falcons-fzu-mu-se-group12.github.io/SportsBuddy/src/frontend/prototype/        ← 原型总览
+https://falcons-fzu-mu-se-group12.github.io/SportsBuddy/src/frontend/prototype/screens.html     ← 可交互原型
+https://falcons-fzu-mu-se-group12.github.io/SportsBuddy/src/frontend/docs/diagrams/class-diagram.html  ← 类图
+```
+
+**手机上也能直接看**，不用装任何东西。离线示意数据全在前端，所以整站功能都能点。
+
+> 建议在仓库根目录加一个空文件 `.nojekyll`：GitHub Pages 默认走 Jekyll，
+> 加它可以避免个别下划线开头的文件被忽略，也让构建更单纯。
+>
+> 注意 Pages 会把**整个仓库**（23 MB）都发布出去，不只是前端。如果里面有
+> 不希望公开的作业材料，就别开 Pages，改用办法 2。
+
+### 办法 2：队友本地起服务（看改完的最新效果）
+
+```powershell
+git clone https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy.git
+cd SportsBuddy
+node src/frontend/tools/server.mjs          # 需要 Node.js 18+
+```
+
+然后打开 `http://127.0.0.1:5178/src/frontend/frontend/`。
+
+本机复现"子路径部署"（排查上线 404 用）：
+
+```powershell
+node src/frontend/tools/server.mjs 5182 --prefix=/SportsBuddy/src/frontend
+# 然后访问 http://127.0.0.1:5182/SportsBuddy/src/frontend/frontend/
+```
+
+### 办法 3：直接在 GitHub 网页上看（看代码和类图很方便）
+
+| 想看什么 | GitHub 网页上能不能直接看 |
+|---|---|
+| 源码、README、目录结构 | ✅ 直接点开 |
+| **类图 SVG**（`docs/diagrams/class-diagram.svg`） | ✅ GitHub 会渲染出来 |
+| 类图 Mermaid 源文件（`.mmd`） | ✅ GitHub 会把它渲染成图 |
+| 类图查看页、原型页、前端应用（`.html`） | ❌ GitHub 只显示源码，不运行页面 |
+
+所以"看效果"还是得用办法 1 或 2；办法 3 适合快速 review 代码。
+`.svg` 是自包含的矢量图，队友点开就能看到完整类图，这个不用起服务。
+
+---
+
+## 二、目录结构
+
+```
+sportmate-app/
+├─ frontend/                        ① 前端应用（零依赖）
+│  ├─ index.html                    ← 唯一的"配置入口"
+│  ├─ assets/css/app.css            设计系统：令牌 / 组件 / 移动优先适配
+│  └─ src/
+│     ├─ main.js                    启动：预热 /health → 拉字典 → 恢复登录态 → 挂路由
+│     ├─ router.js                  hash 路由 + 登录守卫
+│     ├─ store.js                   全局状态（登录态、字典、路由表）
+│     ├─ api/
+│     │  ├─ index.js                ★ 19 个接口封装（对照文档第七节）
+│     │  ├─ http.js                 请求层：token / 错误归一化 / 时区无关
+│     │  └─ mock.js                 离线后端替身（在 fetch 位置替换，19 个接口全覆盖）
+│     ├─ fixtures/index.js          示意数据（4 个用户、9 场活动、5 条评价）
+│     ├─ shared/
+│     │  ├─ format.js               ★ 时区处理（后端 UTC 串 → 本地时间）
+│     │  ├─ domain.js               枚举与界面文案的唯一来源
+│     │  ├─ components.js           可复用界面片段（卡片、标签、签到码…）
+│     │  └─ ui.js                   200 行渲染内核 + 事件委托
+│     └─ pages/                     11 个页面（详见下表）
+├─ prototype/                       ③ 界面原型
+│  ├─ index.html                    总览与接口覆盖表（生成）
+│  ├─ screens.html                  12 个可交互画面（生成）
+│  ├─ wireframe.html                信息架构图 + 路由表（手写）
+│  └─ css/gallery.css               展板样式（与 app.css 分离）
+├─ out/prototype-jpg/               ④ 原型图（JPG，可直接放进报告/PPT）
+│  ├─ 00-总览.jpg                   12 屏拼版总览
+│  └─ P-01…P-12_*.jpg               每屏一张，780×1688
+├─ docs/diagrams/                   ② 类图
+│  ├─ class-diagram.mmd             Mermaid 源文件（可贴进 mermaid.live）
+│  ├─ class-diagram.svg             离线渲染的 UML 风格 SVG（可插进报告）
+│  └─ class-diagram.html            可缩放查看 + 类/关系清单表
+└─ tools/                           工具与自检（Node / Python，都不需要装依赖）
+   ├─ server.mjs                    零依赖静态服务器（支持 --prefix 模拟子路径部署）
+   ├─ verify.mjs                    ★ 99 项自检
+   ├─ check-links.mjs               链接与资源完整性检查
+   ├─ browser-stub.mjs              Node 里跑页面模块用的浏览器环境替身
+   ├─ build-prototype.mjs           生成 prototype/ 两个页面
+   ├─ render-prototype-jpg.py       ★ 把 12 个画面渲染成 JPG（Pillow）
+   ├─ render-class-diagram-jpg.py   ★ 把领域类图渲染成 JPG（Pillow）
+   ├─ render-class-diagram.py       把 .mmd 渲染成 SVG + HTML
+   ├─ check-class-diagram.py        类图几何校验（文字不溢出 / 连线不穿框）
+   ├─ check-mojibake.py             ★ 乱码校验（字体是否缺字 / 方法名是否误判）
+   └─ upload-to-github.mjs          用 GitHub API 上传（支持 --include-jpg / fork + PR）
+```
+
+### 原型图（JPG）是怎么来的
+
+这台机器上**没有可用的无头浏览器**（沙盒禁止 Chromium 的进程间通信，
+`Edge --headless --screenshot` 直接崩在 `platform_channel.cc`），所以没法给网页截图。
+替代方案是用 Pillow 按同一套设计令牌与 CSS 尺寸，把 12 个画面重画一遍：
+
+```powershell
+python tools/render-prototype-jpg.py                 # 全部渲染 → out/prototype-jpg/
+python tools/render-prototype-jpg.py --only=P-07     # 只渲染某一屏
+python tools/render-prototype-jpg.py --scale=3       # 提高分辨率（默认 2x = 780×1688）
+```
+
+产物共 13 张、约 1.9 MB：12 张单屏（每张就是一整屏，可直接贴进文档）+ 1 张 3×4 拼版总览。
+
+> JPG 是"按设计稿重绘"的，与 `prototype/screens.html` 里能点的版本在
+> 配色、字号、间距、文案上保持一致 —— 区别只是一个是静态图、一个能交互。
+> 改了 `app.css` 的令牌，记得同步 `render-prototype-jpg.py` 顶部的 `C` 字典。
+>
+> 想把这些图一起传到仓库：`node tools/upload-to-github.mjs --include-jpg`
+> （会落到 `src/frontend/prototype-jpg/`；默认不加，避免仓库体积变大）。
+
+---
+
+## 三、页面清单（11 个页面）
+
+| 页面 | 路由 | 主要接口 |
+|---|---|---|
+| P-01 登录 / 注册 | `#/login` | `POST /auth/login`、`POST /auth/register` |
+| P-02 找局（首页） | `#/discover` | `GET /match/parse`、`GET /match`、`GET /activities` |
+| P-03 活动列表 | `#/activities` | `GET /activities`（5 类筛选 + 分页） |
+| P-04 活动详情 | `#/activity/:id` | `GET /activities/{id}`、`POST`/`DELETE .../join` |
+| P-05 发起 / 编辑活动 | `#/activity-new(/:id)` | `GET /sports`、`POST /activities`、`PATCH /activities/{id}` |
+| P-06 管理活动（发起人） | `#/activity-manage/:id` | `POST .../attendance`、`POST .../cancel` |
+| P-07 签到 | `#/checkin/:id` | `POST .../checkin`（签到码 / 定位） |
+| P-08 评价同场伙伴 | `#/review/:activityId` | `POST /activities/{id}/reviews` |
+| P-09 个人主页 | `#/user/:id` | `GET /users/{id}`、`GET /users/{id}/reviews` |
+| P-10 我的局 | `#/manage` | `GET /activities/mine` |
+| P-11 我的 | `#/me` | `GET`/`PATCH /me`、`POST /auth/logout` |
+
+底部标签栏 4 个主页面：找局 / 活动 / 我的局 / 我的。标签栏之外的页面都带返回。
+
+---
+
+## 四、怎么接真实后端
+
+后端文档里挖了三个坑，代码里都已经处理掉了，但**地址要你自己改一处**：
+
+### 1. 改配置（唯一要改的地方）
+
+打开 `frontend/index.html`，把这两行按需要修改：
+
+```html
+<script>
+  window.__SPORTMATE_CONFIG__ = {
+    useMock: true,                              // ← 接真实后端改成 false
+    apiBaseUrl: 'http://127.0.0.1:8000'         // ← 改成你的后端地址
+  }
+</script>
+```
+
+- 本地跑后端：`apiBaseUrl: 'http://127.0.0.1:8000'`
+- 用同学的线上后端：`apiBaseUrl: 'https://sportmate-backend-gm34.onrender.com'`
+  （免费实例会休眠，启动时会先打 `/health` 预热并提示）
+
+不改也能跑：`useMock: true` 时用内置示意数据，**断网可演示**。
+
+### 2. 文档里三个坑的落地位置
+
+| 文档里的坑 | 本工程的处理位置 | 做法 |
+|---|---|---|
+| 时间差 8 小时（后端 UTC 串不带 Z） | `shared/format.js` 的 `parseServerTime()` | 没有时区后缀就补 `Z`；提交时用 `toISOString()` |
+| 创建活动不返回签到码 | `pages/activity-new.js` | 创建成功后**再查一次详情**才拿到 `checkin_code` |
+| 中文查询参数要编码 | `api/http.js` 的 `buildUrl()` | 统一走 `URLSearchParams` |
+| `checkin_code` 只有发起人可见 | `pages/activity.js` | 判断条件是 `detail.checkin_code != null`，不比较 user_id |
+| 临期取消扣分 | `pages/activity.js`、`pages/manage.js` | 点"取消报名"先看 `is_late_cancel` 窗口，弹二次确认 |
+| 信用分 < 60 不能报名 | `shared/domain.js` 的 `RULES.MIN_CREDIT` | 提前禁用按钮并给出原因，不等到 403 |
+
+### 3. 错误码的分工
+
+后端保证 `detail` 永远是字符串，所以 `err.message` 可以直接显示。
+界面在此基础上按状态码做差异化反馈（`docs` 里明确要求区分的两处）：
+
+- **403**：签到码错误 / 超出 300 米（后端会返回具体米数）/ 信用分不足 / 没报名 → 红色错误条
+- **409**：重复报名 / 已满员 / 已签到 → 同样直接显示后端中文提示
+
+---
+
+## 五、自检与再生成
+
+这台机器上没有可用的无头浏览器（沙盒禁止 Chromium 的进程间通信），
+所以"界面是否正确"用**程序化校验**兜底，不是靠肉眼：
+
+```powershell
+node tools/verify.mjs                 # 99 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析
+node tools/check-links.mjs            # 5 个入口页面的 js/css/svg 引用全部可达
+python tools/render-class-diagram.py  # 由 .mmd 生成 SVG + HTML
+python tools/check-class-diagram.py   # 类图几何校验：文字不溢出、连线不穿框、画布不截断
+python tools/render-class-diagram-jpg.py  # 由同一套布局生成类图 JPG
+python tools/render-prototype-jpg.py  # 12 个原型画面 → JPG
+python tools/check-mojibake.py        # 乱码校验：字体缺字 / 方法名被误判成属性
+node tools/build-prototype.mjs        # 重新生成原型页
+```
+
+> **踩过的坑（已加校验守住）**：类图里的方法名一度全是方框，原因是两个 bug 叠加 ——
+> ① 解析器用 `endswith(")")` 判断方法行，漏掉了带返回类型的写法（`+注册() AuthSession`），
+> 把方法误判成属性；② 属性行用 Consolas 等宽字体渲染，而 **Consolas 没有中日韩字形**。
+> `check-mojibake.py` 专门盯这两点：检查每段文本分配到的字体是否覆盖它自己的字符、
+> 检查含括号的成员是否都被识别成方法。
+
+`verify.mjs` 具体覆盖四类内容：
+
+- **A. 19 个接口逐一调用**，确认 mock 后端真的能响应，且创建活动确实不返回 `checkin_code`；
+- **B. 业务规则**：重复报名 409、满员 409、信用分 58 分 403、签到码错 403、
+  跨城定位 403（提示 1557 公里）、临期取消 `is_late_cancel=true` 且扣 5 分、
+  考勤未勾选记为爽约、非发起人拿不到签到码、已开始不能报名 400；
+- **C. 页面渲染**：11 个页面的 HTML 标签配平、无 `undefined`/`NaN`、
+  所有 `data-action` 都有对应处理函数；游客态再跑一遍；
+- **D. 时区**：不带时区按 UTC 解析、带 `Z` 不重复补、`+08:00` 与 `+0800` 都能识别，
+  并专门回归"少 8 小时"这个经典 bug。
+
+最近一次运行结果：
+
+```
+A. 接口清单覆盖（19 个）··········· 21 项通过
+B. 业务规则（对照《前端对接文档》）·· 13 项通过
+C. 页面渲染与 data-action 契约 ····· 39 项通过
+D. 时区与格式化 ··················· 12 项通过
+E. 一句话找局解析 ················· 14 项通过
+────────────────────────────────────────
+全部通过：99 项检查
+```
+
+类图几何校验：
+
+```
+✓ SVG 是合法 XML
+✓ 类框数量与 .mmd 一致（15 个）
+✓ 所有类框内文本都在框内（无溢出）
+✓ 没有连线穿过类框
+✓ 画布 1324×1884 完整包住内容
+```
+
+---
+
+## 六、界面原型的做法（为什么它不会和实现"两张皮"）
+
+`prototype/screens.html` 里每个手机框都**直接 import 真实页面模块**
+（`frontend/src/pages/*.js`），调用它自己的 `view()` 渲染、自己的 `actions` 处理点击。
+
+也就是说：
+
+- 改前端代码 → 重新跑一次 `node tools/build-prototype.mjs` → 原型自动跟着变；
+- 原型里能看到的行为，就是代码里真实的行为，不存在"原型画得好看、实现做不到"。
+
+原型内还做了两件展示上的处理：
+
+1. **换页按钮的语义化**：像"详情""去签到""记录考勤"这类会跳路由的按钮，
+   在原型里改为**平滑滚动并高亮**目标画面，方便把一整条流程串起来讲。
+2. **顶部操作日志**：每次点击都会显示执行了哪个 action，便于答辩时说明"这一下做了什么"。
+
+---
+
+## 七、设计说明（可写进文档的部分）
+
+- **移动优先**：主内容区最大 520px，≥900px 才展开双列；底部标签栏固定并适配 `env(safe-area-inset-bottom)`。
+- **设计令牌集中在 `:root`**：主色活力橙 `#ff6a3d`、辅助青绿 `#12b5a5`，
+  中性色 5 级，圆角/阴影 3 级。换主题只改这一处。
+- **状态即颜色**：可报名=绿、已满员=黄、进行中=蓝、已结束=灰、已取消=红；
+  信用分用环形进度并按阈值变色（<60 红）。
+- **每个页面都有四态**：加载骨架屏 / 空态（带引导按钮）/ 错误条（显示后端原文）/ 正常态。
+- **信息密度控制**：活动卡片把"还有几个位置"做成进度条而不是纯文字；
+  一句话找局把后端返回的 `reason` 渲染成"项目匹配 / 水平合适 / 同校区 / 距离 0.5km"标签，
+  让用户看得见"为什么推荐给你"。
+
+---
+
+## 八、已知限制（如实说明）
+
+1. **未接真实后端实测**：本机没有外网（`curl` 访问 GitHub / npm / Render 全部超时），
+   所以所有验证都跑在内置 mock 上。接口路径、参数、字段、状态码均严格对照《前端对接文档》，
+   但"真实后端联调"这一步没做过 —— 这是环境限制，不是取舍。
+2. **原型图是"重绘"而非"截图"**：沙盒禁止 Chromium 的进程间通信
+   （`platform_channel.cc: Check failed`），Edge 无头模式起不来，所以拿不到真实网页截图。
+   现在的 `out/prototype-jpg/` 是用 Pillow 按同一套设计令牌与 CSS 尺寸**重画**的，
+   因此**不是浏览器渲染的像素级还原**：字体回退到微软雅黑、个别 emoji 用几何图形代替
+   （如定位图钉）、长文本换行位置可能与浏览器略有差异。
+   要看真实的浏览器渲染效果，用 `prototype/screens.html`（可交互、可当场演示）。
+3. **演示用数据是示意数据**：`frontend/src/fixtures/index.js` 里的 4 个用户、9 场活动、
+   5 条评价全部是编的，不是真实用户信息。
+4. **离线 mock 的数据库在内存里**：刷新页面即还原。要持久化就接真实后端。
+5. **原 `sportmate-web/` 与 `docs/` 未改动**：工作区里已有的 React monorepo
+   （含申诉、工单、团体等模块）实现的是另一份需求，与本 zip 的后端接口对不上，
+   因此本次交付是独立新建的 `sportmate-app/`，旧目录原样保留。
+
+---
+
+## 九、类图怎么用
+
+- 直接看：`docs/diagrams/class-diagram.html`（可缩放，下方有类/关系清单表）
+- 插进报告：`docs/diagrams/class-diagram.svg`（矢量，Word 里"插入 → 图片"即可）
+- 继续编辑：`docs/diagrams/class-diagram.mmd`，贴到 <https://mermaid.live> 或 IDE 插件里改；
+  改完执行 `python tools/render-class-diagram.py` 重新出图。
+
+类图覆盖 15 个类：`User`、`Activity`、`Registration`、`Participant`、`Review`、`Sport`、
+`MatchResult`、`MatchReason`、`AuthSession`、`CheckinResult`，
+以及 5 个枚举 `SkillLevel` / `ActivityStatus` / `RegistrationStatus` / `CheckinMethod` / `GenderLimit`。
+
+图中把"投影视图"（`Participant`，来自 `GET /activities/{id}` 的 `participants[]`）
+与"实体"（`Registration`，报名表）区分开了，避免把响应结构误当成数据库表。
