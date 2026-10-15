@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Office temp files
+~$*.docx
+~$*.pptx
+~$*.xlsx
+*.tmp
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Node
+node_modules/
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+
+# Java
+target/
+*.class
