@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>动搭 SportMate · 前端交付总览</title>
+<link rel="stylesheet" href="../frontend/assets/css/app.css" />
+<link rel="stylesheet" href="./css/gallery.css" />
+
+</head>
+<body class="smp">
+  <header class="smp-head"><div class="smp-head__wrap">
+    <h1>动搭 SportMate · 前端交付总览</h1>
+    <p>
+      依据 <code>sportmate后端.zip</code> 里的《前端对接文档》实现：一个零安装、可离线运行的移动优先前端，
+      外加领域类图与可交互界面原型。三项交付物都可以直接在本地浏览器打开。
+    </p>
+    <nav class="smp-nav"><a href="./index.html" aria-current="page">原型总览</a><a href="./screens.html">界面原型（可交互）</a><a href="./wireframe.html">页面结构与跳转</a><a href="../docs/diagrams/class-diagram.html">类图</a></nav>
+  </div></header>
+
+  <main class="smp-main">
+    <div class="smp-notes" style="margin-top:0">
+      <div class="smp-card">
+        <h2>① 前端应用</h2>
+        <p style="font-size:13px;color:var(--smp-ink2)">
+          原生 ES Module + 自研 200 行渲染内核，<b>无需 npm install</b>。
+          默认用内置离线数据，打开即可看；接真实后端只需改 index.html 里的一行配置。
+        </p>
+        <p><a href="../frontend/index.html"><b>→ 打开应用</b></a></p>
+        <ul>
+          <li>11 个页面 / 19 个接口全覆盖</li>
+          <li>时区、错误码、权限差异都按文档处理</li>
+          <li><code>node tools/verify.mjs</code> 自检 99 项</li>
+        </ul>
+      </div>
+      <div class="smp-card">
+        <h2>② 领域类图</h2>
+        <p style="font-size:13px;color:var(--smp-ink2)">
+          从后端接口契约反推的 15 个类、20 条关系，附 Mermaid 源文件与离线渲染的 SVG。
+        </p>
+        <p><a href="../docs/diagrams/class-diagram.html"><b>→ 查看类图</b></a></p>
+        <ul>
+          <li><code>docs/diagrams/class-diagram.mmd</code>（可贴进 mermaid.live）</li>
+          <li><code>docs/diagrams/class-diagram.svg</code>（可直接插进报告）</li>
+        </ul>
+      </div>
+      <div class="smp-card">
+        <h2>③ 界面原型</h2>
+        <p style="font-size:13px;color:var(--smp-ink2)">
+          12 个画面并排、可点击、可交互，与前端代码同源。
+        </p>
+        <p>
+          <a href="./screens.html"><b>→ 可交互原型</b></a> ·
+          <a href="./wireframe.html"><b>→ 页面结构与跳转</b></a>
+        </p>
+        <ul>
+          <li>框内可操作，换页按钮会高亮跳转</li>
+          <li>每个画面标注了对应接口</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="smp-notes">
+      <div class="smp-card">
+        <h2>画面清单（12 个）</h2>
+        <table class="smp-table">
+          <thead><tr><th>编号</th><th>画面</th><th>说明</th><th>主要接口</th></tr></thead>
+          <tbody><tr><td>P-01</td><td><b>登录 / 注册</b></td><td>未登录入口，含演示账号</td><td><code>POST /auth/login · /auth/register</code></td></tr><tr><td>P-02</td><td><b>找局（首页）</b></td><td>一句话找局 + 推荐理由</td><td><code>GET /match/parse · /match · /activities</code></td></tr><tr><td>P-03</td><td><b>活动列表</b></td><td>按项目 / 状态 / 时间筛选</td><td><code>GET /activities</code></td></tr><tr><td>P-04</td><td><b>活动详情（参与者）</b></td><td>报名 / 退报 / 签到入口</td><td><code>GET /activities/{id} · POST /join</code></td></tr><tr><td>P-05</td><td><b>活动详情（发起人）</b></td><td>签到码 + 考勤入口</td><td><code>GET /activities/{id}（发起人可见 checkin_code）</code></td></tr><tr><td>P-06</td><td><b>发起活动</b></td><td>表单校验 + 时间转 UTC</td><td><code>GET /sports · POST /activities</code></td></tr><tr><td>P-07</td><td><b>签到</b></td><td>签到码 / 定位两种方式</td><td><code>POST /activities/{id}/checkin</code></td></tr><tr><td>P-08</td><td><b>管理活动</b></td><td>签到码 + 记录考勤</td><td><code>POST /activities/{id}/attendance</code></td></tr><tr><td>P-09</td><td><b>我的局</b></td><td>我发起的 / 我报名的</td><td><code>GET /activities/mine</code></td></tr><tr><td>P-10</td><td><b>我的</b></td><td>信用分 + 评价汇总</td><td><code>GET /me · /users/{id}/reviews</code></td></tr><tr><td>P-11</td><td><b>个人主页（他人）</b></td><td>信用分、评价分布、印象标签</td><td><code>GET /users/{id} · /users/{id}/reviews</code></td></tr><tr><td>P-12</td><td><b>评价同场伙伴</b></td><td>星级 + 印象标签</td><td><code>POST /activities/{id}/reviews</code></td></tr></tbody>
+        </table>
+      </div>
+      <div class="smp-card">
+        <h2>接口覆盖（19 个接口，含 3 个匿名可访问）</h2>
+        <table class="smp-table">
+          <thead><tr><th>方法</th><th>路径</th><th>落在哪个画面</th></tr></thead>
+          <tbody><tr><td><span class="smp-pill">POST</span></td><td><code>/auth/register</code></td><td>P-01 注册表单</td></tr><tr><td><span class="smp-pill">POST</span></td><td><code>/auth/login</code></td><td>P-01 登录</td></tr><tr><td><span class="smp-pill">POST</span></td><td><code>/auth/logout</code></td><td>P-10 我的 · 退出登录</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/me</code></td><td>P-10 我的（信用分卡片）</td></tr><tr><td><span class="smp-pill">PATCH</span></td><td><code>/me</code></td><td>P-10 编辑资料</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/sports</code></td><td>P-06 发起活动的项目下拉</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/health</code></td><td>启动预热（不占画面）</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/users/{id}</code></td><td>P-11 个人主页</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/users/{id}/reviews</code></td><td>P-11 评价列表与分布</td></tr><tr><td><span class="smp-pill">POST</span></td><td><code>/activities</code></td><td>P-06 发布活动</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/activities</code></td><td>P-03 活动列表（含筛选）</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/activities/mine</code></td><td>P-09 我的局</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/activities/{id}</code></td><td>P-04 / P-05 详情的两种视角</td></tr><tr><td><span class="smp-pill">PATCH</span></td><td><code>/activities/{id}</code></td><td>P-06 编辑模式（同页复用）</td></tr><tr><td><span class="smp-pill">POST</span></td><td><code>/activities/{id}/cancel</code></td><td>P-05 发起人取消活动</td></tr><tr><td><span class="smp-pill">POST</span></td><td><code>/activities/{id}/join</code></td><td>P-04 报名的二次确认弹层</td></tr><tr><td><span class="smp-pill">DELETE</span></td><td><code>/activities/{id}/join</code></td><td>P-04 取消报名（临期提醒）</td></tr><tr><td><span class="smp-pill">POST</span></td><td><code>/activities/{id}/checkin</code></td><td>P-07 签到码 / 定位</td></tr><tr><td><span class="smp-pill">POST</span></td><td><code>/activities/{id}/attendance</code></td><td>P-08 记录考勤</td></tr><tr><td><span class="smp-pill">POST</span></td><td><code>/activities/{id}/reviews</code></td><td>P-12 评价</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/match</code></td><td>P-02 按条件匹配</td></tr><tr><td><span class="smp-pill">GET</span></td><td><code>/match/parse</code></td><td>P-02 一句话找局</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="smp-notes">
+      <div class="smp-card">
+        <h2>怎么跑起来</h2>
+        <ol>
+          <li>在项目根目录执行 <code>node tools/server.mjs</code>（也可双击 <code>start.cmd</code>）</li>
+          <li>浏览器打开 <code>http://127.0.0.1:5178/prototype/</code></li>
+          <li>接真实后端：把 <code>frontend/index.html</code> 里的
+              <code>useMock</code> 改为 <code>false</code>，
+              <code>apiBaseUrl</code> 指向后端地址</li>
+        </ol>
+        <p style="font-size:12.5px;color:var(--smp-ink3)">
+          不需要 npm install：本工程没有构建步骤，也没有 node_modules 依赖。
+        </p>
+      </div>
+      <div class="smp-card">
+        <h2>自检与再生成</h2>
+        <table class="smp-table">
+          <tbody>
+            <tr><td><code>node tools/verify.mjs</code></td><td>99 项自检：接口、业务规则、页面渲染、时区</td></tr>
+            <tr><td><code>python tools/render-class-diagram.py</code></td><td>由 .mmd 渲染出 SVG 类图</td></tr>
+            <tr><td><code>python tools/check-class-diagram.py</code></td><td>几何校验：文字不溢出、连线不穿框</td></tr>
+            <tr><td><code>node tools/build-prototype.mjs</code></td><td>重新生成本原型页</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <p class="smp-foot">示意数据仅用于演示，不代表真实用户信息。</p>
+</body>
+</html>

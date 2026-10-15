@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>动搭 SportMate · 界面原型（可交互）</title>
+<link rel="stylesheet" href="../../src/frontend/frontend/assets/css/app.css" />
+<link rel="stylesheet" href="./css/gallery.css" />
+
+</head>
+<body class="smp">
+  <header class="smp-head"><div class="smp-head__wrap">
+    <h1>界面原型 · 可交互</h1>
+    <p>
+      共 12 个画面，覆盖《前端对接文档》里全部 19 个接口。每个框都是真实页面模块渲染出来的，
+      可以直接点击操作；右上角标注了该画面主要用到的接口。
+    </p>
+    <nav class="smp-nav"><a href="./index.html">原型总览</a><a href="./screens.html" aria-current="page">界面原型（可交互）</a><a href="./wireframe.html">页面结构与跳转</a><a href="../docs/diagrams/class-diagram.html">类图</a></nav>
+  </div></header>
+
+  <div class="smp-bar"><div class="smp-bar__wrap">
+    <button id="btn-reset" class="primary" type="button">重新开始</button>
+    <span id="log" class="smp-bar__log">等待操作…</span>
+    <span class="smp-bar__hint">提示：换页按钮会高亮跳到对应画面；弹层可按 Esc 关闭</span>
+  </div></div>
+
+  <main class="smp-main">
+    <div class="smp-grid">
+<section class="smp-phone" id="frame-login" data-frame="login">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">01</span>
+    <span>
+      <span class="smp-phone__title">登录 / 注册</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">未登录入口，含演示账号</span>
+    </span>
+    <span class="smp-phone__api">POST /auth/login · /auth/register</span>
+  </header>
+  <div class="smp-phone__body" data-mount="login">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-discover" data-frame="discover">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">02</span>
+    <span>
+      <span class="smp-phone__title">找局（首页）</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">一句话找局 + 推荐理由</span>
+    </span>
+    <span class="smp-phone__api">GET /match/parse · /match · /activities</span>
+  </header>
+  <div class="smp-phone__body" data-mount="discover">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-activities" data-frame="activities">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">03</span>
+    <span>
+      <span class="smp-phone__title">活动列表</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">按项目 / 状态 / 时间筛选</span>
+    </span>
+    <span class="smp-phone__api">GET /activities</span>
+  </header>
+  <div class="smp-phone__body" data-mount="activities">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-activity" data-frame="activity">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">04</span>
+    <span>
+      <span class="smp-phone__title">活动详情（参与者）</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">报名 / 退报 / 签到入口</span>
+    </span>
+    <span class="smp-phone__api">GET /activities/{id} · POST /join</span>
+  </header>
+  <div class="smp-phone__body" data-mount="activity">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-activity-organizer" data-frame="activity-organizer">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">05</span>
+    <span>
+      <span class="smp-phone__title">活动详情（发起人）</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">签到码 + 考勤入口</span>
+    </span>
+    <span class="smp-phone__api">GET /activities/{id}（发起人可见 checkin_code）</span>
+  </header>
+  <div class="smp-phone__body" data-mount="activity-organizer">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-activity-new" data-frame="activity-new">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">06</span>
+    <span>
+      <span class="smp-phone__title">发起活动</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">表单校验 + 时间转 UTC</span>
+    </span>
+    <span class="smp-phone__api">GET /sports · POST /activities</span>
+  </header>
+  <div class="smp-phone__body" data-mount="activity-new">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-checkin" data-frame="checkin">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">07</span>
+    <span>
+      <span class="smp-phone__title">签到</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">签到码 / 定位两种方式</span>
+    </span>
+    <span class="smp-phone__api">POST /activities/{id}/checkin</span>
+  </header>
+  <div class="smp-phone__body" data-mount="checkin">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-activity-manage" data-frame="activity-manage">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">08</span>
+    <span>
+      <span class="smp-phone__title">管理活动</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">签到码 + 记录考勤</span>
+    </span>
+    <span class="smp-phone__api">POST /activities/{id}/attendance</span>
+  </header>
+  <div class="smp-phone__body" data-mount="activity-manage">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-manage" data-frame="manage">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">09</span>
+    <span>
+      <span class="smp-phone__title">我的局</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">我发起的 / 我报名的</span>
+    </span>
+    <span class="smp-phone__api">GET /activities/mine</span>
+  </header>
+  <div class="smp-phone__body" data-mount="manage">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-me" data-frame="me">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">10</span>
+    <span>
+      <span class="smp-phone__title">我的</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">信用分 + 评价汇总</span>
+    </span>
+    <span class="smp-phone__api">GET /me · /users/{id}/reviews</span>
+  </header>
+  <div class="smp-phone__body" data-mount="me">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-user" data-frame="user">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">11</span>
+    <span>
+      <span class="smp-phone__title">个人主页（他人）</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">信用分、评价分布、印象标签</span>
+    </span>
+    <span class="smp-phone__api">GET /users/{id} · /users/{id}/reviews</span>
+  </header>
+  <div class="smp-phone__body" data-mount="user">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+<section class="smp-phone" id="frame-review" data-frame="review">
+  <header class="smp-phone__cap">
+    <span class="smp-phone__no">12</span>
+    <span>
+      <span class="smp-phone__title">评价同场伙伴</span>
+      <span class="smp-phone__desc" style="display:block;margin:0">星级 + 印象标签</span>
+    </span>
+    <span class="smp-phone__api">POST /activities/{id}/reviews</span>
+  </header>
+  <div class="smp-phone__body" data-mount="review">
+    <div class="sm-main"><div class="sm-skel" style="height:120px"></div></div>
+  </div>
+</section>
+    </div>
+
+  <section class="smp-notes">
+    <div class="smp-card">
+      <h2>怎么看这块展板</h2>
+      <ul>
+        <li>每个手机框都是<b>真实前端页面</b>渲染出来的，不是画出来的图片。</li>
+        <li>框里可以<b>直接点</b>：切换筛选、展开弹层、提交表单都会真的跑一遍页面逻辑。</li>
+        <li>点「报名」「详情」「去签到」这类<b>换页按钮</b>，会高亮跳转到对应画面，方便串起整个流程。</li>
+        <li>数据来自内置的离线示例数据（offline mock），因此断网也能演示。</li>
+        <li>顶部工具条的「重新开始」会清空本次操作对数据的影响。</li>
+      </ul>
+    </div>
+    <div class="smp-card">
+      <h2>几个可以当场演示的路径</h2>
+      <ol>
+        <li><b>新手找局</b>：P-02 输入「今晚想在旗山校区打篮球，新手可以吗」→ 看推荐卡片上的「项目匹配 / 水平合适 / 同校区」标签。</li>
+        <li><b>报名到签到</b>：P-04 点「立即报名」→ 弹层留一句话 → 确认；再进 P-07 输入签到码 <code>9572</code>。</li>
+        <li><b>发起人视角</b>：P-05 / P-08 是以活动发起人（王妍）身份渲染的，能看到签到码与考勤勾选。</li>
+        <li><b>信用分不足</b>：用活动列表里发起人为「高飞」的活动，报名会拿到 403 的中文提示。</li>
+      </ol>
+    </div>
+    <div class="smp-card">
+      <h2>原型与实现的对应关系</h2>
+      <p style="font-size:13px;color:var(--smp-ink2);margin:0">
+        每个画面都直接引用 <code>frontend/src/pages/*.js</code> 里的页面模块，
+        调用它自己的 <code>view()</code> 与 <code>actions</code>。
+        也就是说：<b>改了前端代码，原型自动跟着变</b>，不存在"原型与实现两张皮"。
+        重新生成只需运行一次 <code>node tools/build-prototype.mjs</code>。
+      </p>
+    </div>
+  </section>
+  </main>
+
+  <p class="smp-foot">
+    原型数据为示意数据，非真实用户信息。类图见
+    <a href="../docs/diagrams/class-diagram.html">领域类图</a>。
+  </p>
+
+  <script type="module">
+
+import { api, tokenStore } from '../frontend/src/api/index.js'
+import { resetMock } from '../frontend/src/api/mock.js'
+import { loadSports, setSession, store } from '../frontend/src/store.js'
+
+const SCREENS = [
+  {
+    "id": "login",
+    "module": "login",
+    "params": {},
+    "guest": true,
+    "asUser": null,
+    "demoMatch": null,
+    "tweak": null
+  },
+  {
+    "id": "discover",
+    "module": "discover",
+    "params": {},
+    "guest": false,
+    "asUser": null,
+    "demoMatch": "今晚想在旗山校区打篮球，新手可以吗",
+    "tweak": null
+  },
+  {
+    "id": "activities",
+    "module": "activities",
+    "params": {},
+    "guest": false,
+    "asUser": null,
+    "demoMatch": null,
+    "tweak": null
+  },
+  {
+    "id": "activity",
+    "module": "activity",
+    "params": {
+      "id": "101"
+    },
+    "guest": false,
+    "asUser": null,
+    "demoMatch": null,
+    "tweak": null
+  },
+  {
+    "id": "activity-organizer",
+    "module": "activity",
+    "params": {
+      "id": "103"
+    },
+    "guest": false,
+    "asUser": 2,
+    "demoMatch": null,
+    "tweak": null
+  },
+  {
+    "id": "activity-new",
+    "module": "activity-new",
+    "params": {},
+    "guest": false,
+    "asUser": null,
+    "demoMatch": null,
+    "tweak": "new-beginner"
+  },
+  {
+    "id": "checkin",
+    "module": "checkin",
+    "params": {
+      "id": "101"
+    },
+    "guest": false,
+    "asUser": null,
+    "demoMatch": null,
+    "tweak": null
+  },
+  {
+    "id": "activity-manage",
+    "module": "activity-manage",
+    "params": {
+      "id": "103"
+    },
+    "guest": false,
+    "asUser": 2,
+    "demoMatch": null,
+    "tweak": null
+  },
+  {
+    "id": "manage",
+    "module": "manage",
+    "params": {},
+    "guest": false,
+    "asUser": null,
+    "demoMatch": null,
+    "tweak": null
+  },
+  {
+    "id": "me",
+    "module": "me",
+    "params": {},
+    "guest": false,
+    "asUser": null,
+    "demoMatch": null,
+    "tweak": null
+  },
+  {
+    "id": "user",
+    "module": "user",
+    "params": {
+      "id": "3"
+    },
+    "guest": false,
+    "asUser": null,
+    "demoMatch": null,
+    "tweak": null
+  },
+  {
+    "id": "review",
+    "module": "review",
+    "params": {
+      "activityId": "107"
+    },
+    "guest": false,
+    "asUser": null,
+    "demoMatch": null,
+    "tweak": "review-stars"
+  }
+]
+
+/* 每个画面一个独立实例：自己的状态、自己的渲染 */
+const instances = new Map()
+
+/** 构造一个 action ctx（与 frontend/src/shared/ui.js 里给页面处理函数的上下文一致） */
+function makeCtx(inst, el, data = {}, form = {}) {
+  return {
+    data: { ...data },
+    form: { ...form },
+    el,
+    root: inst.root,
+    rerender: () => paint(inst),
+  }
+}
+
+function paint(inst) {
+  const { page, root } = inst
+  const bar = page.appBar ? page.appBar() : ''
+  root.innerHTML = bar + page.view() + (inst.layers || []).join('')
+}
+
+async function signIn(userId = 1) {
+  const res = await api.login(
+    userId === 1 ? 'linhao' : 'wangyan',
+    'secret123'
+  )
+  tokenStore.set(res.access_token)
+  setSession(await api.getMe())
+}
+
+/** 页面里"换页"的动作：在原型里改为跳到对应画面并高亮 */
+const ROUTE_ACTIONS = {
+  'open-activity': 'activity',
+  'go-activities': 'activities',
+  'go-checkin': 'checkin',
+  'go-review': 'review',
+  'go-new': 'activity-new',
+  'go-manage': 'activity-manage',
+  'view-user': 'user',
+  'go-login': 'login',
+  'go-discover': 'discover',
+  'go-list': 'activities',
+  'go-my-page': 'me',
+}
+
+function note(text) {
+  const el = document.getElementById('log')
+  el.textContent = text
+  clearTimeout(note._t)
+  note._t = setTimeout(() => { el.textContent = '等待操作…' }, 5000)
+}
+
+function jumpTo(id) {
+  const target = document.getElementById('frame-' + id)
+  if (!target) return
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  target.style.transition = 'box-shadow .4s'
+  target.style.boxShadow = '0 0 0 3px #ff6a3d, 0 10px 30px rgba(255,106,61,.28)'
+  setTimeout(() => { target.style.boxShadow = '' }, 1500)
+}
+
+/* ---------------- 事件委托（与 ui.js 同一套协议） ---------------- */
+function actionEl(node, root) {
+  let el = node
+  while (el && el !== root) {
+    if (el.dataset && el.dataset.action) return el
+    el = el.parentElement
+  }
+  return null
+}
+
+function readForm(root) {
+  const out = {}
+  for (const el of root.querySelectorAll('input[name], textarea[name], select[name]')) {
+    const k = el.name
+    if (el.type === 'checkbox') {
+      if (!Array.isArray(out[k])) out[k] = []
+      if (el.checked) out[k].push(el.value)
+    } else if (el.type === 'radio') {
+      if (el.checked) out[k] = el.value
+    } else out[k] = el.value
+  }
+  return out
+}
+
+async function run(inst, el, event) {
+  const name = el.dataset.action
+  const fn = inst.page.actions && inst.page.actions[name]
+  if (typeof fn !== 'function') return
+  if (event) event.preventDefault()
+
+  // 换页类动作 → 在原型里表现为"跳到对应画面"
+  const dest = ROUTE_ACTIONS[name]
+  if (dest) {
+    note('「' + (el.textContent || name).trim().slice(0, 12) + '」是换页入口 → 跳到画面 ' + dest)
+    jumpTo(dest)
+    return
+  }
+
+  try {
+    // ui.js 会在渲染前保存输入值；原型这里用同样的思路读一次当前表单
+    const form = readForm(inst.root)
+    await fn(makeCtx(inst, el, { ...el.dataset }, form))
+    paint(inst)
+    note('已执行动作：' + name)
+  } catch (err) {
+    note('动作 ' + name + ' 出错：' + err.message)
+    console.error(err)
+  }
+}
+
+function bind(inst) {
+  const root = inst.root
+  root.addEventListener('click', (e) => {
+    const el = actionEl(e.target, root)
+    if (!el) return
+    if (el.tagName === 'BUTTON' && el.getAttribute('type') === 'submit') return
+    run(inst, el, e)
+  })
+  root.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const form = e.target
+    const el = actionEl(form.querySelector('[type=submit]') || form, root)
+    if (el) run(inst, el, e)
+  })
+  root.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      inst.layers = []
+      paint(inst)
+    }
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+      const host = e.target.closest('[data-enter]')
+      const btn = host && host.querySelector('[data-action]')
+      if (btn) { e.preventDefault(); run(inst, btn, e) }
+    }
+  })
+}
+
+/* ---------------- 启动与数据准备 ---------------- */
+async function boot() {
+  resetMock()
+  tokenStore.clear()
+  setSession(null)
+  store.sports = []
+  await loadSports()
+
+  // 1) 先建实例（此时还未渲染最终内容）
+  for (const s of SCREENS) {
+    const mount = document.querySelector('[data-mount="' + s.id + '"]')
+    const mod = await import('../frontend/src/pages/' + s.module + '.js')
+    const page = mod.create(s.params)
+    const inst = { ...s, page, root: mount, layers: [] }
+    instances.set(s.id, inst)
+    bind(inst)
+  }
+
+  // 2) 分三批准备登录态，避免不同身份互相覆盖
+  const need2 = SCREENS.filter((s) => s.asUser === 2).map((s) => s.id)
+  const guests = SCREENS.filter((s) => s.guest).map((s) => s.id)
+
+  // 2a. 游客画面
+  tokenStore.clear()
+  setSession(null)
+  for (const id of guests) {
+    const inst = instances.get(id)
+    if (inst.page.load) await inst.page.load()
+  }
+
+  // 2b. 发起人身份（活动 103 的发起人是 王妍 id=2）
+  if (need2.length) {
+    await signIn(2)
+    for (const id of need2) {
+      const inst = instances.get(id)
+      if (inst.page.load) await inst.page.load()
+    }
+  }
+
+  // 2c. 默认参与者身份（林浩 id=1）
+  await signIn(1)
+  for (const inst of instances.values()) {
+    if (guests.includes(inst.id) || need2.includes(inst.id)) continue
+    if (inst.page.load) await inst.page.load()
+  }
+
+  // 3) 个别画面的"先点一下"初始状态
+  for (const inst of instances.values()) {
+    if (inst.demoMatch) {
+      await inst.page.actions['use-example'](makeCtx(inst, null, { text: inst.demoMatch }))
+      await inst.page.actions.match(
+        makeCtx(inst, null, { sentence: inst.demoMatch }, { sentence: inst.demoMatch })
+      )
+    }
+    if (inst.tweak === 'new-beginner') {
+      await inst.page.actions.switch(makeCtx(inst, null, { name: 'skill_level', value: 'beginner' }))
+    }
+    if (inst.tweak === 'review-stars') {
+      await inst.page.actions.star(makeCtx(inst, null, { user: '3', score: '5' }))
+      await inst.page.actions.tag(makeCtx(inst, null, { user: '3', value: '准时' }))
+      await inst.page.actions.tag(makeCtx(inst, null, { user: '3', value: '球风好' }))
+    }
+  }
+
+  // 4) 统一渲染
+  for (const inst of instances.values()) paint(inst)
+  note('已就绪：可以直接在下面的手机框里点击操作')
+}
+
+document.getElementById('btn-reset').addEventListener('click', () => location.reload())
+
+boot().catch((err) => {
+  const el = document.getElementById('log')
+  if (el) el.textContent = '启动失败：' + err.message
+  console.error(err)
+})
+
+  </script>
+</body>
+</html>
