@@ -1,0 +1,19 @@
+{
+  "name": "sportmate-frontend-starter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SportMate 校园运动组局平台 - 前端起步脚手架（Vue3 + Vite），已接好后端全部接口",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^5.4.11"
+  }
+}
