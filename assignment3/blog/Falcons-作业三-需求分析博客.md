@@ -27,7 +27,7 @@
 | --- | --- |
 | Software Requirements Specification — Word (required) | [需求规格说明书V3.1.docx](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment3/srs/需求规格说明书V3.1.docx) |
 | Software Requirements Specification — PDF | [需求规格说明书V3.1.pdf](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment3/srs/需求规格说明书V3.1.pdf) |
-| Requirements-analysis presentation | [To be added after the PPT is uploaded] |
+| Requirements-analysis presentation | [PPTX](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment3/slides/Falcons-Assignment3-Requirements-Analysis.pptx) · [PDF](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment3/slides/Falcons-Assignment3-Requirements-Analysis.pdf) |
 | Domain class diagram | [领域类图.jpg](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment3/diagrams/领域类图.jpg) |
 | Interface prototypes (12 screens) | [assignment3/prototypes](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/tree/main/assignment3/prototypes) |
 | Implementation prototype / source code | [src/](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/tree/main/src) |
@@ -82,7 +82,7 @@ The SRS was further improved from the previous assignment (V2.2 → V3.1). Both 
 
 - **Word (required)**: [需求规格说明书V3.1.docx](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment3/srs/需求规格说明书V3.1.docx)
 - **PDF (recommended)**: [需求规格说明书V3.1.pdf](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment3/srs/需求规格说明书V3.1.pdf)
-- **Requirements-analysis presentation**: [To be added after the PPT is uploaded]
+- **Requirements-analysis presentation**: [PPTX](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment3/slides/Falcons-Assignment3-Requirements-Analysis.pptx) · [PDF](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment3/slides/Falcons-Assignment3-Requirements-Analysis.pdf)
 
 ### 2.2 Document Structure and Coverage
 
