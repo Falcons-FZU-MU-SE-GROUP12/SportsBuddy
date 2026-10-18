@@ -2,50 +2,44 @@
 
 **Assignment requirement:** https://bbs.csdn.net/topics/620549144
 
-**Deadline:** 2026-10-18 23:59 *(the TA post first showed Nov 18, later Oct 18 — CONFIRM in the group chat)*
+**Deadline:** 2026-10-18 23:59 *(the TA post first showed Nov 18, later Oct 18 — confirm in the group chat)*
 
-## Deliverables (3 items)
+## Deliverables
 
-| # | Deliverable | Format / where | Location in repo |
-| --- | --- | --- | --- |
-| 1 | Blog post | Markdown on CSDN, link submitted to course page | `blog/` |
-| 2 | Software Requirements Specification | **Word (required)** + PDF recommended; upload to **GitHub/GitCode** and link in blog | `srs/` |
-| 3 | Requirements analysis presentation | PPTX + PDF recommended; upload to **GitCode or CSDN** and link in blog | `slides/` + CSDN |
+| # | Deliverable | Format / where | Location in repo | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Blog post | Markdown on CSDN, link submitted to course page | `blog/` | draft done |
+| 2 | Software Requirements Specification | Word (required) + PDF | `srs/` | done |
+| 3 | Requirements analysis presentation | PPTX + PDF; also upload to CSDN/GitCode and link in blog | `slides/` | done |
+| 4 | UML class diagram | JPG | `diagrams/` | done |
+| 5 | Interface prototypes | 12 screens (JPG) | `prototypes/` | done |
 
-## Blog required content
+## Files
 
-- [ ] Table of contents
-- [ ] Basic info table: Course link, Assignment Requirement link, Team Name, Assignment Goal, Other References
-- [ ] **Team Division of Labor** — Markdown table `Student ID | Task Description | Contribution`
-- [ ] **Software Requirements Specification** — link to the SRS
-- [ ] Key points and challenges encountered (4 pts)
-- [ ] Team collaboration: task allocation, progress sync, document collaboration, communication, review & integration (16 pts)
+- `blog/Falcons-作业三-需求分析博客.md`
+- `srs/需求规格说明书V3.1.docx` / `.pdf`
+- `slides/Falcons-Assignment3-Requirements-Analysis.pptx` / `.pdf`
+- `diagrams/领域类图.jpg`, `领域类图-适合插入文档.jpg`
+- `prototypes/` — 00 overview + P-01 … P-12
 
 ## SRS content checklist (44 pts)
 
 | Item | Points | Status |
 | --- | --- | --- |
-| Introduction | 4 | ❌ not started |
-| User Scenarios | 10 | ❌ not started |
-| Class Diagram | 10 | ❌ not started |
-| Interface Prototype | 10 | ❌ not started |
-| Functional Description | 5 | ❌ not started |
-| Acceptance and Verification Criteria | 5 | ❌ not started |
+| Introduction | 4 | done |
+| User Scenarios | 10 | done |
+| Class Diagram | 10 | done |
+| Interface Prototype | 10 | done |
+| Functional Description | 5 | done |
+| Acceptance and Verification Criteria | 5 | done |
 
-- Follow the national SRS standard and this structure:
-  `1 Introduction / 2 Overall Description / 3 Specific Requirements (Class Diagram, Properties) / 4 Interface Prototype / 5 Functional Description & Acceptance/Verification Criteria`.
-- Word formatting: TOC, consistent fonts/sizes/line spacing, figures + tables.
-- Interview real users where possible.
+## Remaining before submission
 
-## Current repo status
-
-- `srs/` — only the old V2.2 PDF is in `assignment2/`; **no Word version, no class diagram, no interface prototype yet**.
-- `diagrams/` — empty (class diagram to be produced here).
-- `prototypes/` — empty (interface prototypes to be produced here).
-- `slides/` — empty (requirements analysis PPT to be produced here).
-- `blog/` — empty (blog draft to be written here).
+- [ ] Publish the blog on CSDN and submit its link on the course page
+- [ ] Upload the PPT to CSDN or GitCode (TA requirement) and replace the PPT link in the blog if needed
+- [ ] Confirm the deadline in the group chat
 
 ## Notes
 
-- The TA does **not** require any specific git branch layout; the folder layout above is our own.
+- The TA does not require any specific git branch layout; the folder layout above is our own.
 - See `../CONTRIBUTING.md` for how to upload.
