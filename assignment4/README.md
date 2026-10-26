@@ -1,37 +1,82 @@
-# Assignment 4 — Prototype Design
+# Assignment 4 — Prototype Design (MoDao)
 
 **Assignment requirement:** https://bbs.csdn.net/topics/620556488
 **Deadline:** 2026-11-01 23:59
 
 ## Deliverables
 
-| # | Deliverable | Where | Status |
+| # | Deliverable | Status |
+| --- | --- | --- |
+| 1 | Blog post (TOC + format + division table + prototype link) | to do |
+| 2 | Interactive prototype in **MoDao (墨刀)**, published with a public link | in progress |
+| 3 | Prototype design report PPT (must contain the link; live demo) | to do |
+
+## Tool
+
+**MoDao (墨刀)** — required to state the tool in the blog.
+
+## 12-screen ownership (inside MoDao)
+
+| Screen | Owner |
+| --- | --- |
+| P-01 Login / Register | Zhang Zile |
+| P-02 Discovery Home | Zhang Zile |
+| P-03 Activity List | Zhang Zile |
+| P-04 Activity Detail (participant) | Ye Yifan |
+| P-05 Activity Detail (organizer) | Ye Yifan |
+| P-06 Create Activity | Ye Yifan |
+| P-07 Check-in | Lin Zijun |
+| P-08 Manage Activity | Lin Zijun |
+| P-09 My Activities | Li Zhenhao |
+| P-10 Me | Li Zhenhao |
+| P-11 Profile (other user) | Li Haoze |
+| P-12 Review Partners | He Jinghao |
+
+## Task plan (10/26 – 11/01)
+
+| ID | Task | Owner | Due |
 | --- | --- | --- | --- |
-| 1 | Blog post (TOC + format description + division table + prototype link) | `blog/` → CSDN | to do |
-| 2 | Interface prototype design (published as a **web page**, with a public link) | `prototype-links.md` | link ready |
-| 3 | Prototype design report presentation (must contain the prototype link; live demo in defense) | `slides/` | to do |
+| W1 | Create MoDao team/project, invite members, naming rules, import 12 screens | Zhang Zile | 10/26 |
+| W2 | Hotspot / flow map | Ye Yifan | 10/26 |
+| W3–W8 | Add hotspots & states to the assigned screens | Screen owners | 10/27 |
+| W9 | Business states: full capacity, <60 credit, cancel penalty | Zhang Jingtian, Yu Chenghao | 10/27 |
+| W10 | Check-in code / 300m location, permission differences | Zhang Xinyu, Xu Boyu | 10/27 |
+| W11 | Matching / reliability display logic | Cai Yaohua | 10/28 |
+| W12 | Visual consistency (color, font, status bar, phone frame) | Li Haoze, Li Zhenhao | 10/28 |
+| W13 | Full walkthrough vs SRS M1–M5, defect list | Wang Shaojie (+ Xu Boyu) | 10/29 |
+| W14 | Fix defects and re-check | Screen owners | 10/29 |
+| W15 | Publish in MoDao, public share link + QR code | Zhang Zile | 10/29 |
+| W16 | Team meeting + non-posed discussion photo + feelings | Huang Zhiyuan + all | 10/28 |
+| W17 | Blog writing | Huang Zhiyuan (+ product team) | 10/30 |
+| W18 | PPT + PDF (with MoDao link and QR code) | Li Haoze, He Jinghao + all | 10/30 |
+| W19 | Rehearsal: open link → login → discover → sign up → check in → review | Zhang Zile (backup Ye Yifan) | 10/31 |
+| W20 | Publish blog, upload PPT, submit on course page | Huang Zhiyuan | 10/31 |
 
-## Published prototype (GitHub Pages)
+## Blog checklist
 
-- Interactive prototype (12 screens): https://falcons-fzu-mu-se-group12.github.io/SportsBuddy/src/frontend/prototype/screens.html
-- Prototype overview: https://falcons-fzu-mu-se-group12.github.io/SportsBuddy/src/frontend/prototype/index.html
-- Page structure & navigation: https://falcons-fzu-mu-se-group12.github.io/SportsBuddy/src/frontend/prototype/wireframe.html
+- [ ] TOC and format description (course, assignment link, team, goal, references)
+- [ ] Tool stated: MoDao (墨刀) + link
+- [ ] Division table: Student ID / Work Description / Contribution
+- [ ] Prototype process, design concepts
+- [ ] Difficulties + attempts + solved + gains
+- [ ] Team collaboration
+- [ ] Non-posed team discussion photo
+- [ ] MoDao prototype link (+ QR code)
+- [ ] PPT link
 
-## Key rules
+## PPT checklist
 
-- The prototype must be **published as a web page** and linked in the blog.
-- The prototype must be built with a **specialized prototype tool** (Axure, MoDao, Balsamiq, …) — state the tool in the blog.
-- The PPT **must include an accessible prototype link**; in the defense, **open the link and demonstrate clicks and navigation**, not just screenshots.
-- The blog must include a **non-posed team discussion photo**.
-- Describe difficulties and solutions: difficulty (5'), attempts + solved (5'), gains (5').
+- [ ] Prototype completion process
+- [ ] Design concepts and interface introduction
+- [ ] Division of labor and workload proportion
+- [ ] Difficulties, solutions, gains
+- [ ] Accessible MoDao link + QR code
+- [ ] Live demo script (login → discover → sign up → check in → review)
 
-## Scoring (100)
+## Risks
 
-- 20' Basic requirements: TOC/format/prototype link (5), Markdown (5), challenges (4), division & contribution (6)
-- 30' Prototype design: specialized tool (5), process & result (25)
-- 30' Results report: prototype introduction (15), difficulties & gains (15)
-- 20' Presentation: process + team photo + feelings (8), plan execution & division (4), PPT (4), live prototype demo (4)
-
-## Task plan
-
-See `../../Falcons-作业四-任务分工.md` (team task assignment, kept outside the repo) and the table in the blog.
+- Only 6 days left → import the existing 12 JPGs and add hotspots instead of redrawing.
+- MoDao free sharing may require login → publish as public / no-login and test in incognito.
+- Prototype link must open on the defense computer → prepare QR code and a backup short link.
+- The TA requires a specialized tool (5 pts) → state MoDao explicitly in the blog.
+- Non-posed team photo (8 pts) → take it at the 10/28 meeting.
