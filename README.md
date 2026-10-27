@@ -10,6 +10,7 @@ Sports Buddy — a sports matchmaking platform for university students.
 
 ```
 SportsBuddy/
+├── WORKLOG.md              # team work log (add a row for every change)
 ├── assignment2/            # Assignment 2 — Team Formation & Topic Selection
 │   ├── blog/               # team blog (markdown source)
 │   ├── docs/               # Requirements Specification V2.2
