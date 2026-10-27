@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SportsBuddy · 页面结构与跳转</title>
+<link rel="stylesheet" href="../frontend/assets/css/app.css" />
+<link rel="stylesheet" href="./css/gallery.css" />
+<style>
+  /* 本页专属：信息架构图 */
+  .wf-stage {
+    background: #fff;
+    border: 1px solid var(--smp-line);
+    border-radius: var(--smp-radius);
+    padding: 18px;
+    overflow: auto;
+    box-shadow: 0 6px 20px rgba(24, 28, 40, 0.06);
+  }
+  .wf-stage svg { display: block; }
+  .wf-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: var(--smp-ink3);
+    align-items: center;
+  }
+  .wf-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .wf-swatch { width: 13px; height: 13px; border-radius: 4px; display: inline-block; }
+  .wf-list { display: grid; gap: 14px; }
+  .wf-item {
+    background: #fff;
+    border: 1px solid var(--smp-line);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .wf-item__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .wf-item__no {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--smp-brand);
+    border-radius: 6px;
+    padding: 1px 7px;
+  }
+  .wf-item__title { font-size: 14.5px; font-weight: 650; }
+  .wf-item__api { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: #2f6fd0; }
+  .wf-item ul { margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: var(--smp-ink2); }
+  .wf-item li { margin: 2px 0; }
+  .wf-item li b { color: var(--smp-ink); }
+</style>
+</head>
+<body class="smp">
+  <header class="smp-head"><div class="smp-head__wrap">
+    <h1>页面结构与跳转</h1>
+    <p>
+      12 个画面的层级关系、页面内的主要区块，以及它们之间的跳转路径。
+      这张图对应前端代码里的路由表（<code>frontend/src/store.js</code> 的 <code>ROUTES</code>）
+      与底部标签栏（4 个主页面）。
+    </p>
+    <nav class="smp-nav">
+      <a href="./index.html">原型总览</a>
+      <a href="./screens.html">界面原型（可交互）</a>
+      <a href="./wireframe.html" aria-current="page">页面结构与跳转</a>
+      <a href="../docs/diagrams/class-diagram.html">类图</a>
+    </nav>
+  </div></header>
+
+  <main class="smp-main">
+    <div class="wf-stage">
+      <svg viewBox="0 0 1180 700" width="1180" height="700" role="img"
+           aria-label="SportsBuddy 页面结构与跳转示意图">
+        <defs>
+          <marker id="wf-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8"
+                  orient="auto-start-reverse">
+            <path d="M 0 1 L 11 6 L 0 11 z" fill="#98a1b5"/>
+          </marker>
+          <marker id="wf-arrow-brand" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8"
+                  orient="auto-start-reverse">
+            <path d="M 0 1 L 11 6 L 0 11 z" fill="#ff6a3d"/>
+          </marker>
+        </defs>
+
+        <text x="0" y="14" font-size="13" font-weight="650" fill="#4a5060">① 入口</text>
+        <text x="300" y="14" font-size="13" font-weight="650" fill="#4a5060">② 底部标签栏（4 个主页面，可互相切换）</text>
+        <text x="880" y="14" font-size="13" font-weight="650" fill="#4a5060">③ 二级页面</text>
+
+        <!-- 分隔线 -->
+        <line x1="286" y1="24" x2="286" y2="690" stroke="#e6e9f0" stroke-width="1" stroke-dasharray="4 5"/>
+        <line x1="866" y1="24" x2="866" y2="690" stroke="#e6e9f0" stroke-width="1" stroke-dasharray="4 5"/>
+
+        <!-- ============ P-01 登录 ============ -->
+        <g>
+          <rect x="0" y="34" width="248" height="150" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="0" y="34" width="248" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="0" y="56" width="248" height="12" fill="#eef0fb"/>
+          <rect x="2" y="34" width="4" height="150" rx="2" fill="#ff6a3d"/>
+          <text x="14" y="56" font-size="13" font-weight="650" fill="#1d2130">P-01 登录 / 注册</text>
+          <text x="14" y="86" font-size="11.5" fill="#7b8398">[ 登录 | 注册 ] 分段开关</text>
+          <text x="14" y="104" font-size="11.5" fill="#7b8398">[ 用户名 ]  [ 密码 ]</text>
+          <text x="14" y="122" font-size="11.5" fill="#7b8398">[ 注册并登录 ]（主按钮）</text>
+          <text x="14" y="140" font-size="11.5" fill="#7b8398">[ 用演示账号体验 ]</text>
+          <text x="14" y="164" font-size="11" fill="#98a1b5">POST /auth/login · /auth/register</text>
+        </g>
+
+        <!-- ============ P-02 找局 ============ -->
+        <g>
+          <rect x="300" y="34" width="256" height="196" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="300" y="34" width="256" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="300" y="56" width="256" height="12" fill="#eef0fb"/>
+          <rect x="302" y="34" width="4" height="196" rx="2" fill="#ff6a3d"/>
+          <text x="314" y="56" font-size="13" font-weight="650" fill="#1d2130">P-02 找局（默认页）</text>
+          <text x="314" y="86" font-size="11.5" fill="#7b8398">信用分卡片（环形 + 3 项统计）</text>
+          <text x="314" y="104" font-size="11.5" fill="#7b8398">一句话找局输入 + 例子 chips</text>
+          <text x="314" y="122" font-size="11.5" fill="#7b8398">条件筛选：项目 / 校区 / 水平</text>
+          <text x="314" y="140" font-size="11.5" fill="#7b8398">推荐卡片（含"为什么推荐"标签）</text>
+          <text x="314" y="158" font-size="11.5" fill="#7b8398">最近活动流（最多 6 条）</text>
+          <text x="314" y="176" font-size="11.5" fill="#7b8398">悬浮按钮 ＋ 发起活动</text>
+          <text x="314" y="196" font-size="11" fill="#98a1b5">GET /match/parse · /match · /activities</text>
+          <rect x="306" y="206" width="244" height="18" rx="9" fill="#e8f8f2"/>
+          <text x="314" y="219" font-size="11" fill="#0a6b52">底部标签栏：找局 | 活动 | 我的局 | 我的</text>
+        </g>
+
+        <!-- ============ P-03 活动列表 ============ -->
+        <g>
+          <rect x="300" y="252" width="256" height="164" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="300" y="252" width="256" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="300" y="274" width="256" height="12" fill="#eef0fb"/>
+          <rect x="302" y="252" width="4" height="164" rx="2" fill="#ff6a3d"/>
+          <text x="314" y="274" font-size="13" font-weight="650" fill="#1d2130">P-03 活动列表</text>
+          <text x="314" y="304" font-size="11.5" fill="#7b8398">横向筛选 chips × 5 行</text>
+          <text x="314" y="322" font-size="11.5" fill="#7b8398">（项目 / 状态 / 时间 / 校区 / 水平）</text>
+          <text x="314" y="340" font-size="11.5" fill="#7b8398">只看还有空位（开关）</text>
+          <text x="314" y="358" font-size="11.5" fill="#7b8398">活动卡片列表（带名额进度条）</text>
+          <text x="314" y="376" font-size="11.5" fill="#7b8398">[ 加载更多 ]  空态 / 重置筛选</text>
+          <text x="314" y="398" font-size="11" fill="#98a1b5">GET /activities（分页 limit/offset）</text>
+        </g>
+
+        <!-- ============ P-09 我的局 ============ -->
+        <g>
+          <rect x="300" y="438" width="256" height="150" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="300" y="438" width="256" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="300" y="460" width="256" height="12" fill="#eef0fb"/>
+          <rect x="302" y="438" width="4" height="150" rx="2" fill="#ff6a3d"/>
+          <text x="314" y="460" font-size="13" font-weight="650" fill="#1d2130">P-09 我的局</text>
+          <text x="314" y="490" font-size="11.5" fill="#7b8398">[ 我发起的 | 我报名的 ] 切换</text>
+          <text x="314" y="508" font-size="11.5" fill="#7b8398">我发起：看签到码 / 记录考勤 / 取消</text>
+          <text x="314" y="526" font-size="11.5" fill="#7b8398">我报名：去签到 / 评价 / 取消报名</text>
+          <text x="314" y="544" font-size="11.5" fill="#7b8398">取消前二次确认（临期提醒扣分）</text>
+          <text x="314" y="566" font-size="11" fill="#98a1b5">GET /activities/mine</text>
+        </g>
+
+        <!-- ============ P-10 我的 ============ -->
+        <g>
+          <rect x="300" y="610" width="256" height="76" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="300" y="610" width="256" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="300" y="632" width="256" height="12" fill="#eef0fb"/>
+          <rect x="302" y="610" width="4" height="76" rx="2" fill="#ff6a3d"/>
+          <text x="314" y="632" font-size="13" font-weight="650" fill="#1d2130">P-10 我的</text>
+          <text x="314" y="660" font-size="11.5" fill="#7b8398">资料 / 信用分 / 收到的评价 / 退出登录</text>
+          <text x="314" y="678" font-size="11" fill="#98a1b5">GET · PATCH /me · GET /users/{id}/reviews</text>
+        </g>
+
+        <!-- ============ 右侧：二级页面 ============ -->
+        <g>
+          <rect x="880" y="34" width="290" height="152" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="34" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="56" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="34" width="4" height="152" rx="2" fill="#12b5a5"/>
+          <text x="894" y="56" font-size="13" font-weight="650" fill="#1d2130">P-04 / P-05 活动详情</text>
+          <text x="894" y="84" font-size="11.5" fill="#7b8398">状态标签行 + 标题 + 时间地点</text>
+          <text x="894" y="102" font-size="11.5" fill="#7b8398">事实卡片（时间/地点/人数/费用/发起人）</text>
+          <text x="894" y="120" font-size="11.5" fill="#7b8398"><tspan fill="#0a6b52">参与者：</tspan>[ 立即报名 ]（二次确认弹层）</text>
+          <text x="894" y="138" font-size="11.5" fill="#7b8398"><tspan fill="#8a5800">发起人：</tspan>签到码 4 格 + 记录考勤 + 取消</text>
+          <text x="894" y="156" font-size="11.5" fill="#7b8398">参与者名单（含签到状态）</text>
+          <text x="894" y="176" font-size="11" fill="#98a1b5">GET /activities/{id} · POST · DELETE /join</text>
+        </g>
+
+        <g>
+          <rect x="880" y="206" width="290" height="128" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="206" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="228" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="206" width="4" height="128" rx="2" fill="#12b5a5"/>
+          <text x="894" y="228" font-size="13" font-weight="650" fill="#1d2130">P-06 发起活动 / 编辑</text>
+          <text x="894" y="256" font-size="11.5" fill="#7b8398">标题 / 项目 / 水平（分段开关）</text>
+          <text x="894" y="274" font-size="11.5" fill="#7b8398">开始 + 结束时间（时长快捷按钮）</text>
+          <text x="894" y="292" font-size="11.5" fill="#7b8398">校区 / 地点 / 定位标记场地</text>
+          <text x="894" y="310" font-size="11.5" fill="#7b8398">人数上限 / 费用（元）/ 性别限制 / 说明</text>
+          <text x="894" y="328" font-size="11" fill="#98a1b5">POST /activities · PATCH /activities/{id}</text>
+        </g>
+
+        <g>
+          <rect x="880" y="354" width="290" height="112" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="354" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="376" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="354" width="4" height="112" rx="2" fill="#12b5a5"/>
+          <text x="894" y="376" font-size="13" font-weight="650" fill="#1d2130">P-07 签到</text>
+          <text x="894" y="404" font-size="11.5" fill="#7b8398">活动摘要 + 我的参与状态</text>
+          <text x="894" y="422" font-size="11.5" fill="#7b8398">方式一：4 位签到码（大字输入）</text>
+          <text x="894" y="440" font-size="11.5" fill="#7b8398">方式二：定位签到（300 米内）</text>
+          <text x="894" y="458" font-size="11.5" fill="#7b8398">成功后转"签到成功"结果页</text>
+          <text x="894" y="476" font-size="11" fill="#98a1b5">POST /activities/{id}/checkin</text>
+        </g>
+
+        <g>
+          <rect x="880" y="486" width="290" height="92" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="486" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="508" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="486" width="4" height="92" rx="2" fill="#12b5a5"/>
+          <text x="894" y="508" font-size="13" font-weight="650" fill="#1d2130">P-08 管理活动（仅发起人）</text>
+          <text x="894" y="536" font-size="11.5" fill="#7b8398">签到码大字展示 + 到场情况勾选</text>
+          <text x="894" y="554" font-size="11.5" fill="#7b8398">全选 / 全不选 / 提交考勤</text>
+          <text x="894" y="572" font-size="11" fill="#98a1b5">POST /activities/{id}/attendance · /cancel</text>
+        </g>
+
+        <g>
+          <rect x="880" y="598" width="290" height="88" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="598" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="620" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="598" width="4" height="88" rx="2" fill="#12b5a5"/>
+          <text x="894" y="620" font-size="13" font-weight="650" fill="#1d2130">P-11 个人主页 / P-12 评价</text>
+          <text x="894" y="648" font-size="11.5" fill="#7b8398">主页：信用分、评价分布条形、印象标签</text>
+          <text x="894" y="666" font-size="11.5" fill="#7b8398">评价：星级 + 标签 + 一句话（仅到场可评）</text>
+          <text x="894" y="682" font-size="11" fill="#98a1b5">GET /users/{id} · /reviews · POST /reviews</text>
+        </g>
+
+        <!-- ============ 连线 ============ -->
+        <!-- 登录 → 找局 -->
+        <path d="M 248 109 H 300" fill="none" stroke="#ff6a3d" stroke-width="1.6"
+              marker-end="url(#wf-arrow-brand)"/>
+        <text x="252" y="103" font-size="10.5" fill="#ff6a3d">登录成功</text>
+
+        <!-- 标签栏内部切换 -->
+        <path d="M 556 109 H 576 V 538 H 556" fill="none" stroke="#98a1b5" stroke-width="1.4"/>
+        <text x="580" y="330" font-size="10.5" fill="#98a1b5">标签栏</text>
+
+        <!-- 主页面 → 二级 -->
+        <path d="M 556 120 H 700 V 110 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="700" y="104" font-size="10.5" fill="#98a1b5">点活动卡片</text>
+
+        <path d="M 556 96 H 660 V 270 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="626" y="90" font-size="10.5" fill="#98a1b5">＋ 发起 / 编辑</text>
+
+        <path d="M 556 500 H 640 V 410 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="600" y="494" font-size="10.5" fill="#98a1b5">去签到</text>
+
+        <path d="M 556 520 H 620 V 540 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="612" y="556" font-size="10.5" fill="#98a1b5">记录考勤</text>
+
+        <path d="M 556 620 H 620 V 640 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="600" y="614" font-size="10.5" fill="#98a1b5">我的主页 / 评价</text>
+
+        <!-- 详情 → 名单里的用户主页 -->
+        <path d="M 1025 186 V 200 H 1160 V 690 H 1100 V 686" fill="none" stroke="#c2c8d6"
+              stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="1032" y="200" font-size="10.5" fill="#98a1b5">名单里点「主页」→ P-11</text>
+      </svg>
+    </div>
+
+    <div class="wf-legend">
+      <span><i class="wf-swatch" style="background:#ff6a3d"></i> 主入口 / 标签栏主页面</span>
+      <span><i class="wf-swatch" style="background:#12b5a5"></i> 二级页面（带返回）</span>
+      <span><i class="wf-swatch" style="background:#c2c8d6"></i> 次要跳转（虚线）</span>
+      <span>每条页面下方标注了主要接口</span>
+    </div>
+
+    <section class="smp-notes" style="margin-top:26px">
+      <div class="smp-card">
+        <h2>路由表（与代码一致）</h2>
+        <table class="smp-table">
+          <thead><tr><th>hash 路由</th><th>页面</th><th>需要登录</th><th>底部标签</th></tr></thead>
+          <tbody>
+            <tr><td><code>#/login</code></td><td>登录 / 注册</td><td>否</td><td>—</td></tr>
+            <tr><td><code>#/discover</code></td><td>找局（默认）</td><td>否（游客可浏览）</td><td>找局</td></tr>
+            <tr><td><code>#/activities</code></td><td>活动列表</td><td>否</td><td>活动</td></tr>
+            <tr><td><code>#/activity/:id</code></td><td>活动详情</td><td>否（报名才要）</td><td>—</td></tr>
+            <tr><td><code>#/activity-new</code></td><td>发起活动</td><td><b>是</b></td><td>—</td></tr>
+            <tr><td><code>#/activity-new/:id</code></td><td>编辑活动（复用同页）</td><td><b>是</b></td><td>—</td></tr>
+            <tr><td><code>#/activity-manage/:id</code></td><td>管理活动</td><td><b>是</b>（且为发起人）</td><td>—</td></tr>
+            <tr><td><code>#/checkin/:id</code></td><td>签到</td><td><b>是</b></td><td>—</td></tr>
+            <tr><td><code>#/review/:activityId</code></td><td>评价同场伙伴</td><td><b>是</b></td><td>—</td></tr>
+            <tr><td><code>#/user/:id</code></td><td>个人主页</td><td>否</td><td>—</td></tr>
+            <tr><td><code>#/manage</code></td><td>我的局</td><td><b>是</b></td><td>我的局</td></tr>
+            <tr><td><code>#/me</code></td><td>我的</td><td>否（未登录显示引导）</td><td>我的</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="smp-card">
+        <h2>每个画面的区块清单</h2>
+        <div class="wf-list">
+          <div class="wf-item">
+            <div class="wf-item__head">
+              <span class="wf-item__no">P-02</span><span class="wf-item__title">找局</span>
+              <span class="wf-item__api">GET /match/parse</span>
+            </div>
+            <ul>
+              <li><b>信用分卡片</b>：环形进度 + 完成次数 / 爽约次数 / 评价均分</li>
+              <li><b>一句话找局</b>：单行输入 + 4 个示例 chip，回车即搜</li>
+              <li><b>条件筛选</b>：项目横向 chips + 校区 + 水平 + 只看有空位</li>
+              <li><b>推荐结果</b>：卡片右上角匹配分，卡内"为什么推荐"标签</li>
+              <li><b>最近活动</b>：最多 6 条 + 悬浮发起按钮</li>
+            </ul>
+          </div>
+          <div class="wf-item">
+            <div class="wf-item__head">
+              <span class="wf-item__no">P-04</span><span class="wf-item__title">活动详情</span>
+              <span class="wf-item__api">GET /activities/{id}</span>
+            </div>
+            <ul>
+              <li><b>状态行</b>：可报名 / 已满员 / 进行中 / 已结束 / 已取消</li>
+              <li><b>事实卡</b>：时间（本地时区）、地点、人数、费用、发起人信用分、说明</li>
+              <li><b>身份相关操作区</b>：发起人看到签到码与考勤，报名者看到签到与退报，其他人看到报名</li>
+              <li><b>参与者名单</b>：昵称、水平、信用分、签到状态、备注、主页入口</li>
+            </ul>
+          </div>
+          <div class="wf-item">
+            <div class="wf-item__head">
+              <span class="wf-item__no">P-07</span><span class="wf-item__title">签到</span>
+              <span class="wf-item__api">POST /activities/{id}/checkin</span>
+            </div>
+            <ul>
+              <li><b>两种方式并列</b>：4 位签到码（主）/ 定位（次）</li>
+              <li><b>失败态细分</b>：403 码错或超范围（显示具体米数）、409 已签到</li>
+              <li><b>成功态</b>：换成结果页，给出活动摘要与下一步入口</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <p class="smp-foot">
+    本页为手绘的信息架构图（内联 SVG），与 <code>frontend/src/store.js</code> 的 ROUTES 表保持一致；
+    改路由时请同步更新这里。
+  </p>
+</body>
+</html>
