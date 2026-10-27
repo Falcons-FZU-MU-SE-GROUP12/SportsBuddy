@@ -47,6 +47,15 @@ Then open a **Pull Request** on GitHub. At least one teammate reviews and merges
 - Keep filenames in English (e.g. `srs-v3.0.docx`) so everyone can read them.
 - Mark unfinished parts with `【TODO】` instead of leaving them blank.
 
-## 4. Progress tracking
+## 4. Work log (required)
+
+Every time you add, modify or delete a file, add **one row** to the top of
+[WORKLOG.md](../WORKLOG.md) with: date, GitHub username, type, files, summary, assignment.
+
+- One commit / PR = one row.
+- Do not edit others' files without telling them first; note it in the log.
+- The team lead checks the log at the weekly meeting.
+
+## 5. Progress tracking
 
 Tasks are tracked on the org project board. Move your card when you start and finish.
