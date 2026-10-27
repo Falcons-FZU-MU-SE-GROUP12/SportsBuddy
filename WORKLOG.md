@@ -24,6 +24,7 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-10-27 | JorgeHUANG7 | 新增 | `assignment4/`、`WORKLOG.md`、`CONTRIBUTING.md` | 创建作业四目录与上传说明；新增团队工作日志并纳入协作规范 | 作业四 / 基础设施 |
 | 2026-10-27 | L1n2iJVn | 新增 | `src/sportmate-app/` | 上传原型交付包：前端应用、单文件移动端原型（12 屏可点）、12 屏展板、类图、分享包 | 作业四 |
 | 2026-10-18 | JorgeHUANG7 | 新增/修改 | `assignment3/srs/`、`assignment3/slides/`、`assignment3/blog/` | 上传 SRS V3.1（Word/PDF）、需求分析 PPT（PPTX/PDF）、作业三博客；更新 README | 作业三 |
 | 2026-10-17 | Haoze Li | 新增/修改 | `assignment3/diagrams/`、`assignment3/prototypes/`、`src/` | 上传类图、12 屏原型与前后端源码；删除临时 zip | 作业三 |
