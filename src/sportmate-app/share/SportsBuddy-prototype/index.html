@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SportsBuddy · 前端交付物</title>
+<style>
+  :root { --ink:#16181d; --ink2:#4a5060; --ink3:#7b8398; --brand:#ff6a3d; --line:#e5e8f0; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+         background:#eef1f7; color:var(--ink); line-height:1.65; }
+  header { background:linear-gradient(135deg,#262a36,#3d4351); color:#fff; padding:34px 32px 28px; }
+  header h1 { margin:0; font-size:26px; letter-spacing:-.02em; }
+  header p { margin:10px 0 0; color:rgba(255,255,255,.72); font-size:13.5px; max-width:820px; }
+  main { max-width:960px; margin:0 auto; padding:26px 32px 60px; }
+  .card { display:block; text-decoration:none; color:inherit; background:#fff; border:1px solid var(--line);
+          border-radius:16px; padding:20px 22px; margin-bottom:14px; transition:.15s; }
+  .card:hover { border-color:#ffd0be; box-shadow:0 8px 24px rgba(24,28,40,.09); transform:translateY(-1px); }
+  .card h2 { margin:0 0 6px; font-size:17px; }
+  .card p { margin:0; color:var(--ink2); font-size:13.5px; }
+  .badge { display:inline-block; font-size:11.5px; font-weight:700; color:#fff; background:var(--brand);
+           border-radius:6px; padding:1px 8px; margin-right:8px; vertical-align:2px; }
+  .tip { background:#fff9f5; border:1px solid #ffd9c9; border-radius:12px; padding:14px 18px;
+         font-size:13px; color:#8a4a2a; margin-bottom:20px; }
+  footer { max-width:960px; margin:0 auto; padding:0 32px 50px; color:var(--ink3); font-size:12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SportsBuddy · 校园运动组局</h1>
+  <p>前端交付物。全部为纯静态页面，<b>双击即可打开</b>，不需要安装任何东西、不需要启动服务器。</p>
+</header>
+<main>
+  <div class="tip">
+    这份包可以直接解压后双击 <code>index.html</code>。
+    如果从压缩包里直接双击、而没先解压，部分系统可能无法加载相对路径的文件——建议先全部解压。
+  </div>
+
+  <a class="card" href="01-mobile-prototype.html">
+    <h2><span class="badge">推荐</span>移动端原型（12 屏可跳转）</h2>
+    <p>像真机一样点着走：按钮会真的切到下一页，顶栏可翻屏 / 调出 12 屏目录 / 显示热区。手机上打开会铺满全屏。</p>
+  </a>
+
+  <a class="card" href="02-screens-gallery.html">
+    <h2>12 屏并排展板</h2>
+    <p>一眼看完 P-01 ~ P-12 的全部画面，适合评审、答辩时整体过一遍。</p>
+  </a>
+
+  <a class="card" href="03-wireframe.html">
+    <h2>页面结构与跳转</h2>
+    <p>信息架构图 + 路由表：12 个画面之间的层级关系与跳转路径。</p>
+  </a>
+
+  <a class="card" href="04-class-diagram.html">
+    <h2>领域类图</h2>
+    <p>依据后端接口契约绘制的 15 个类、20 条关系，可缩放查看，附类与关系清单表。</p>
+  </a>
+
+  <a class="card" href="images/prototype-overview.jpg">
+    <h2>原型图（JPG）</h2>
+    <p>12 张单屏图（<code>images/P-01.jpg</code> … <code>P-12.jpg</code>）+ 1 张总览 + 2 张类图，可直接插进 Word / PPT。</p>
+  </a>
+</main>
+<footer>
+  示意数据仅用于演示，不代表真实用户信息。 ·
+  技术说明见交付目录里的 README（本项目为零依赖实现，无需 npm install）。
+</footer>
+</body>
+</html>

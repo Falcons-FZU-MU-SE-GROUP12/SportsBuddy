@@ -1,0 +1,1846 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SportsBuddy · 页面结构与跳转</title>
+<style>
+/* ==========================================================================
+   SportsBuddy · 设计系统
+   --------------------------------------------------------------------------
+   这一份 CSS 同时服务两个交付物：
+     1) frontend/   真实可用前端（连后端或离线 mock）
+     2) prototype/  界面原型（复用同一套样式，保证原型与实现一致）
+   因此这里只放"与数据无关"的视觉规则，不放任何业务逻辑。
+   ========================================================================== */
+
+/* ---------- 1. 设计令牌 ---------- */
+:root {
+  /* 主色：活力橙（运动感），辅助色：青绿（信用分/成功） */
+  --brand: #ff6a3d;
+  --brand-600: #f2542d;
+  --brand-100: #fff1eb;
+  --accent: #12b5a5;
+  --accent-100: #e6f8f6;
+
+  /* 中性色阶 */
+  --ink: #16181d;
+  --ink-2: #4a5060;
+  --ink-3: #7b8398;
+  --line: #edeff4;
+  --line-2: #e0e4ec;
+  --surface: #ffffff;
+  --surface-2: #f6f7fb;
+  --bg: #f2f4f9;
+
+  /* 语义色 */
+  --ok: #10a37f;
+  --ok-bg: #e8f8f2;
+  --warn: #c07800;
+  --warn-bg: #fff6e0;
+  --danger: #d92d4b;
+  --danger-bg: #fdecef;
+  --info: #2f6fd0;
+  --info-bg: #eaf2fe;
+
+  /* 形状与阴影 */
+  --r-sm: 8px;
+  --r: 12px;
+  --r-lg: 18px;
+  --r-pill: 999px;
+  --sh-1: 0 1px 2px rgba(22, 24, 29, 0.05);
+  --sh-2: 0 4px 14px rgba(22, 24, 29, 0.07);
+  --sh-3: 0 12px 34px rgba(22, 24, 29, 0.12);
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
+  --font-num: "SF Mono", "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+/* ---------- 2. 归零 ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+figure {
+  margin: 0;
+}
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+a {
+  color: var(--brand-600);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------- 3. 布局骨架 ---------- */
+.sm-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.sm-main {
+  flex: 1;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+}
+.sm-main--wide {
+  max-width: 900px;
+}
+.sm-stack > * + * {
+  margin-top: 14px;
+}
+.sm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sm-row--wrap {
+  flex-wrap: wrap;
+}
+.sm-row--between {
+  justify-content: space-between;
+}
+.sm-spacer {
+  flex: 1;
+}
+.sm-hide {
+  display: none !important;
+}
+
+/* ---------- 4. 顶部栏 ---------- */
+.sm-appbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.sm-appbar__inner {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sm-appbar__title {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.sm-appbar__sub {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sm-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.sm-brand__mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--brand) 0%, #ff9166 100%);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  box-shadow: 0 3px 10px rgba(255, 106, 61, 0.32);
+}
+.sm-brand__name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.sm-backbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  color: var(--ink-2);
+  flex: none;
+}
+.sm-backbtn:hover {
+  background: var(--surface-2);
+}
+
+/* ---------- 5. 卡片 ---------- */
+.sm-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+  padding: 16px;
+}
+.sm-card--flat {
+  box-shadow: none;
+}
+.sm-card--brand {
+  background: linear-gradient(140deg, #fff 0%, var(--brand-100) 100%);
+  border-color: #ffd9c9;
+}
+.sm-card__title {
+  font-size: 15px;
+  font-weight: 650;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sm-card__hint {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+.sm-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 12px 0;
+  border: 0;
+}
+
+/* ---------- 6. 按钮 ---------- */
+.sm-btn {
+  --btn-bg: #fff;
+  --btn-fg: var(--ink);
+  --btn-bd: var(--line-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  min-height: 42px;
+  border-radius: var(--r);
+  border: 1px solid var(--btn-bd);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.06s ease, filter 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+.sm-btn:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+.sm-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.sm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.sm-btn--primary {
+  --btn-bg: var(--brand);
+  --btn-fg: #fff;
+  --btn-bd: var(--brand);
+  box-shadow: 0 4px 12px rgba(255, 106, 61, 0.28);
+}
+.sm-btn--accent {
+  --btn-bg: var(--accent);
+  --btn-fg: #fff;
+  --btn-bd: var(--accent);
+}
+.sm-btn--ghost {
+  --btn-bg: var(--surface-2);
+  --btn-bd: transparent;
+  color: var(--ink-2);
+}
+.sm-btn--danger {
+  --btn-fg: var(--danger);
+  --btn-bd: #f6c9d2;
+  --btn-bg: #fff;
+}
+.sm-btn--block {
+  width: 100%;
+}
+.sm-btn--sm {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+.sm-btn--lg {
+  min-height: 50px;
+  font-size: 16px;
+  border-radius: 14px;
+}
+
+/* ---------- 7. 表单 ---------- */
+.sm-field {
+  display: block;
+}
+.sm-field + .sm-field {
+  margin-top: 12px;
+}
+.sm-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+.sm-label__opt {
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.sm-input,
+.sm-select,
+.sm-textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.sm-textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+.sm-input:focus,
+.sm-select:focus,
+.sm-textarea:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(255, 106, 61, 0.14);
+}
+.sm-input::placeholder,
+.sm-textarea::placeholder {
+  color: #a9b0c0;
+}
+.sm-input[type="number"] {
+  font-family: var(--font-num);
+}
+.sm-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 420px) {
+  .sm-grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+.sm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.sm-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand);
+  flex: none;
+}
+.sm-switch {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+  padding: 3px;
+  gap: 2px;
+}
+.sm-switch button {
+  border: 0;
+  background: transparent;
+  padding: 7px 16px;
+  border-radius: var(--r-pill);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.sm-switch button[aria-pressed="true"] {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: var(--sh-1);
+}
+
+/* ---------- 8. 标签 / 徽标 ---------- */
+.sm-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+.sm-tag--brand {
+  background: var(--brand-100);
+  color: var(--brand-600);
+}
+.sm-tag--ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.sm-tag--warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.sm-tag--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.sm-tag--info {
+  background: var(--info-bg);
+  color: var(--info);
+}
+.sm-tag--ghost {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--ink-3);
+}
+.sm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* ---------- 9. 活动卡片 ---------- */
+.sm-act {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 14px;
+  box-shadow: var(--sh-1);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+}
+.sm-act:hover {
+  box-shadow: var(--sh-2);
+  border-color: #ffd9c9;
+}
+.sm-act:active {
+  transform: scale(0.995);
+}
+.sm-act__head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.sm-act__sport {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--brand-100);
+  display: grid;
+  place-items: center;
+  font-size: 21px;
+  flex: none;
+}
+.sm-act__title {
+  font-size: 15.5px;
+  font-weight: 660;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sm-act__meta {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-top: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.sm-act__meta b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.sm-act__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sm-act__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px dashed var(--line-2);
+}
+.sm-act__org {
+  font-size: 12px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sm-act__org b {
+  color: var(--ink-2);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sm-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  flex: none;
+}
+.sm-avatar--lg {
+  width: 46px;
+  height: 46px;
+  font-size: 18px;
+}
+
+/* 座位进度条 */
+.sm-seats {
+  margin-top: 11px;
+}
+.sm-seats__bar {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.sm-seats__fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent) 0%, #4fd6c6 100%);
+}
+.sm-seats__fill--full {
+  background: linear-gradient(90deg, #f0a500 0%, #ffc94d 100%);
+}
+.sm-seats__txt {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 5px;
+}
+.sm-seats__txt b {
+  color: var(--ink-2);
+  font-family: var(--font-num);
+}
+
+/* ---------- 10. 匹配理由 ---------- */
+.sm-reason {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sm-score {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--brand-600);
+  background: var(--brand-100);
+  padding: 2px 9px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-num);
+}
+
+/* ---------- 11. 一句话找局 ---------- */
+.sm-nlp {
+  background: linear-gradient(140deg, #2b2f3a 0%, #454b5c 100%);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  color: #fff;
+  box-shadow: var(--sh-2);
+}
+.sm-nlp__label {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.66);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sm-nlp__row {
+  display: flex;
+  gap: 8px;
+}
+.sm-nlp__input {
+  flex: 1;
+  border: 0;
+  border-radius: var(--r);
+  padding: 12px 13px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  outline: none;
+  min-width: 0;
+}
+.sm-nlp__input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+.sm-nlp .sm-btn--primary {
+  box-shadow: none;
+}
+.sm-nlp__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sm-nlp__chip {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.88);
+  border-radius: var(--r-pill);
+  padding: 4px 11px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.sm-nlp__chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ---------- 12. 筛选条 ---------- */
+.sm-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  scrollbar-width: none;
+}
+.sm-filters::-webkit-scrollbar {
+  display: none;
+}
+.sm-chip {
+  border: 1px solid var(--line-2);
+  background: #fff;
+  border-radius: var(--r-pill);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: none;
+}
+.sm-chip[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.sm-chip--mini {
+  padding: 5px 11px;
+  font-size: 12.5px;
+}
+
+/* ---------- 13. 信用分 ---------- */
+.sm-credit {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.sm-credit__ring {
+  flex: none;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.sm-credit__num {
+  font-family: var(--font-num);
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1;
+}
+.sm-credit__unit {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  display: block;
+  text-align: center;
+  margin-top: 3px;
+}
+.sm-credit__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  flex: 1;
+}
+.sm-stat {
+  text-align: center;
+  background: var(--surface-2);
+  border-radius: var(--r);
+  padding: 8px 4px;
+}
+.sm-stat__num {
+  font-family: var(--font-num);
+  font-size: 16px;
+  font-weight: 700;
+}
+.sm-stat__label {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+
+/* ---------- 14. 时间线 / 列表行 ---------- */
+.sm-list {
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.sm-list__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+}
+.sm-list__item + .sm-list__item {
+  border-top: 1px solid var(--line);
+}
+.sm-list__item:hover {
+  background: var(--surface-2);
+}
+.sm-list__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  flex: none;
+}
+.sm-list__body {
+  flex: 1;
+  min-width: 0;
+}
+.sm-list__title {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.sm-list__desc {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+.sm-list__chev {
+  color: #c2c8d6;
+  font-size: 17px;
+  flex: none;
+}
+
+/* ---------- 15. 详情页 ---------- */
+.sm-hero {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 18px 16px 20px;
+}
+.sm-hero__inner {
+  max-width: 520px;
+  margin: 0 auto;
+}
+.sm-hero__title {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.sm-facts {
+  display: grid;
+  gap: 10px;
+}
+.sm-fact {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13.5px;
+}
+.sm-fact__k {
+  width: 68px;
+  flex: none;
+  color: var(--ink-3);
+}
+.sm-fact__v {
+  flex: 1;
+  color: var(--ink);
+  font-weight: 500;
+}
+.sm-code {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 2px;
+}
+.sm-code__cell {
+  flex: 1;
+  background: var(--ink);
+  color: #fff;
+  border-radius: var(--r);
+  font-family: var(--font-num);
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px 0;
+  letter-spacing: 2px;
+}
+.sm-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+.sm-member + .sm-member {
+  border-top: 1px solid var(--line);
+}
+.sm-member__body {
+  flex: 1;
+  min-width: 0;
+}
+.sm-member__name {
+  font-size: 14px;
+  font-weight: 620;
+}
+.sm-member__sub {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+/* ---------- 16. 反馈条 ---------- */
+.sm-alert {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 11px 13px;
+  border-radius: var(--r);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.sm-alert--error {
+  background: var(--danger-bg);
+  color: #8f1730;
+}
+.sm-alert--ok {
+  background: var(--ok-bg);
+  color: #0a6b52;
+}
+.sm-alert--info {
+  background: var(--info-bg);
+  color: #1c4e97;
+}
+.sm-alert--warn {
+  background: var(--warn-bg);
+  color: #8a5800;
+}
+.sm-alert__icon {
+  flex: none;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* ---------- 17. 空态 / 加载 ---------- */
+.sm-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-3);
+}
+.sm-empty__icon {
+  font-size: 34px;
+  margin-bottom: 8px;
+  opacity: 0.75;
+}
+.sm-empty__title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.sm-empty__desc {
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+.sm-skel {
+  border-radius: var(--r);
+  background: linear-gradient(90deg, #eef0f5 25%, #f6f7fa 37%, #eef0f5 63%);
+  background-size: 400% 100%;
+  animation: sm-shimmer 1.3s ease infinite;
+}
+@keyframes sm-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* ---------- 18. 底部标签栏 ---------- */
+.sm-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(14px);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.sm-tabbar__inner {
+  max-width: 520px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.sm-tab {
+  border: 0;
+  background: none;
+  padding: 8px 0 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sm-tab__icon {
+  font-size: 19px;
+  line-height: 1.1;
+  filter: grayscale(1);
+  opacity: 0.62;
+}
+.sm-tab[aria-current="page"] {
+  color: var(--brand-600);
+}
+.sm-tab[aria-current="page"] .sm-tab__icon {
+  filter: none;
+  opacity: 1;
+}
+.sm-fab {
+  position: fixed;
+  right: max(16px, calc(50% - 260px + 16px));
+  bottom: 78px;
+  z-index: 31;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  border: 0;
+  background: var(--brand);
+  color: #fff;
+  font-size: 25px;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(255, 106, 61, 0.42);
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+.sm-fab:active {
+  transform: translateY(1px);
+}
+
+/* ---------- 19. 认证页 ---------- */
+.sm-auth {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: radial-gradient(120% 80% at 50% 0%, #fff3ee 0%, var(--bg) 58%);
+}
+.sm-auth__card {
+  width: 100%;
+  max-width: 392px;
+}
+.sm-auth__logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 19px;
+  background: linear-gradient(135deg, var(--brand) 0%, #ff9166 100%);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  margin: 0 auto 14px;
+  box-shadow: 0 10px 26px rgba(255, 106, 61, 0.36);
+}
+.sm-auth__title {
+  text-align: center;
+  font-size: 23px;
+  font-weight: 720;
+  letter-spacing: -0.02em;
+}
+.sm-auth__sub {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 5px 0 20px;
+}
+.sm-auth__foot {
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 16px;
+  line-height: 1.7;
+}
+
+/* ---------- 20. 弹层 ---------- */
+.sm-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(18, 20, 26, 0.44);
+  padding: 0;
+}
+.sm-sheet__panel {
+  background: #fff;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 20px 20px 0 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: var(--sh-3);
+}
+.sm-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.sm-sheet__title {
+  font-size: 16.5px;
+  font-weight: 680;
+}
+@media (min-width: 560px) {
+  .sm-sheet {
+    align-items: center;
+  }
+  .sm-sheet__panel {
+    border-radius: 20px;
+    max-width: 460px;
+  }
+}
+
+/* ---------- 21. 星评 ---------- */
+.sm-stars {
+  display: flex;
+  gap: 6px;
+}
+.sm-star {
+  border: 0;
+  background: none;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  color: #d9dde7;
+  padding: 0;
+}
+.sm-star[aria-checked="true"] {
+  color: #ffb020;
+}
+.sm-bars {
+  display: grid;
+  gap: 6px;
+}
+.sm-bar {
+  display: grid;
+  grid-template-columns: 68px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sm-bar__track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.sm-bar__fill {
+  height: 100%;
+  border-radius: 99px;
+  background: #ffb020;
+}
+.sm-bar__num {
+  text-align: right;
+  font-family: var(--font-num);
+  color: var(--ink-2);
+}
+
+/* ---------- 22. 离线提示 ---------- */
+.sm-offline {
+  background: #2b2f3a;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+  padding: 6px 12px;
+}
+.sm-offline b {
+  color: #ffd08a;
+}
+
+/* ---------- 23. 桌面端适配 ---------- */
+@media (min-width: 900px) {
+  .sm-main,
+  .sm-appbar__inner,
+  .sm-hero__inner {
+    max-width: 760px;
+  }
+  .sm-act-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .sm-act-grid > * + * {
+    margin-top: 0;
+  }
+}
+
+</style>
+<style>
+/* ==========================================================================
+   界面原型画廊专用样式
+   --------------------------------------------------------------------------
+   与 frontend/assets/css/app.css 的区别：
+     app.css    描述"应用运行时长什么样"（会被真实前端加载）
+     本文件      描述"原型展板长什么样"（只服务 prototype/ 下的展示页）
+   前缀 smp- 表示 SportsBuddy prototype。
+   ========================================================================== */
+
+:root {
+  --smp-bg: #eef1f7;
+  --smp-panel: #ffffff;
+  --smp-line: #dfe3ec;
+  --smp-ink: #16181d;
+  --smp-ink2: #4a5060;
+  --smp-ink3: #7b8398;
+  --smp-brand: #ff6a3d;
+  --smp-radius: 16px;
+  --smp-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+body.smp {
+  margin: 0;
+  font-family: var(--smp-font);
+  background: var(--smp-bg);
+  color: var(--smp-ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+a {
+  color: var(--smp-brand);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ---------------- 页头 ---------------- */
+.smp-head {
+  background: linear-gradient(135deg, #262a36 0%, #3d4351 100%);
+  color: #fff;
+  padding: 30px 32px 26px;
+}
+.smp-head__wrap {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+.smp-head h1 {
+  margin: 0;
+  font-size: 25px;
+  letter-spacing: -0.02em;
+}
+.smp-head p {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13.5px;
+  max-width: 900px;
+}
+.smp-head code {
+  background: rgba(255, 255, 255, 0.13);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: 12.5px;
+}
+.smp-nav {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.smp-nav a {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 6px 14px;
+  color: #fff;
+  font-size: 13px;
+}
+.smp-nav a:hover {
+  background: rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+}
+.smp-nav a[aria-current="page"] {
+  background: var(--smp-brand);
+  border-color: var(--smp-brand);
+}
+
+/* ---------------- 工具条 ---------------- */
+.smp-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--smp-line);
+}
+.smp-bar__wrap {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 9px 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.smp-bar button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--smp-line);
+  background: #fff;
+  border-radius: 9px;
+  padding: 7px 13px;
+  cursor: pointer;
+  color: var(--smp-ink2);
+}
+.smp-bar button:hover {
+  background: #f4f6fa;
+}
+.smp-bar button.primary {
+  background: var(--smp-brand);
+  border-color: var(--smp-brand);
+  color: #fff;
+}
+.smp-bar__hint {
+  font-size: 12.5px;
+  color: var(--smp-ink3);
+  margin-left: auto;
+}
+.smp-bar__log {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  color: #0a6b52;
+  background: #e8f8f2;
+  border-radius: 7px;
+  padding: 3px 9px;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------- 画布与网格 ---------------- */
+.smp-main {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 26px 32px 70px;
+}
+.smp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(392px, 1fr));
+  gap: 30px 26px;
+}
+
+/* ---------------- 手机框 ---------------- */
+.smp-phone {
+  background: var(--smp-panel);
+  border: 1px solid var(--smp-line);
+  border-radius: var(--smp-radius);
+  overflow: hidden;
+  box-shadow: 0 8px 26px rgba(24, 28, 40, 0.09);
+  display: flex;
+  flex-direction: column;
+}
+.smp-phone__cap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--smp-line);
+  background: #fafbfe;
+}
+.smp-phone__no {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: var(--smp-brand);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.smp-phone__title {
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.smp-phone__desc {
+  font-size: 11.5px;
+  color: var(--smp-ink3);
+  margin-left: auto;
+  text-align: right;
+}
+.smp-phone__api {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  color: #2f6fd0;
+  background: #eaf2fe;
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+.smp-phone__body {
+  /* 每个框是一个独立的滚动视口，模拟手机屏幕 */
+  height: 620px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f2f4f9;
+  position: relative;
+}
+.smp-phone__body::-webkit-scrollbar {
+  width: 8px;
+}
+.smp-phone__body::-webkit-scrollbar-thumb {
+  background: #cfd5e2;
+  border-radius: 8px;
+}
+/* 让框内固定元素（底部 tabbar / 悬浮按钮）以"屏幕"为参照 */
+.smp-phone__body {
+  container-type: inline-size;
+}
+.smp-phone__body .sm-tabbar,
+.smp-phone__body .sm-fab {
+  position: absolute;
+}
+.smp-phone__body .sm-tabbar {
+  bottom: 0;
+}
+
+/* 说明区 */
+.smp-notes {
+  margin-top: 34px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
+}
+.smp-card {
+  background: #fff;
+  border: 1px solid var(--smp-line);
+  border-radius: var(--smp-radius);
+  padding: 18px 20px;
+}
+.smp-card h2 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+.smp-card h3 {
+  font-size: 13.5px;
+  margin: 14px 0 6px;
+}
+.smp-card ul,
+.smp-card ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--smp-ink2);
+  font-size: 13px;
+}
+.smp-card li {
+  margin: 4px 0;
+}
+.smp-card code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  background: #f2f4f9;
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.smp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.smp-table th,
+.smp-table td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--smp-line);
+  vertical-align: top;
+}
+.smp-table th {
+  color: var(--smp-ink3);
+  font-weight: 600;
+  font-size: 12px;
+}
+.smp-pill {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 1px 8px;
+  background: #eaf2fe;
+  color: #2f6fd0;
+}
+.smp-pill.ok {
+  background: #e8f8f2;
+  color: #0a6b52;
+}
+.smp-pill.warn {
+  background: #fff6e0;
+  color: #8a5800;
+}
+.smp-foot {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 32px 60px;
+  color: var(--smp-ink3);
+  font-size: 12.5px;
+}
+
+@media (max-width: 700px) {
+  .smp-head,
+  .smp-bar__wrap,
+  .smp-main,
+  .smp-foot {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .smp-grid {
+    grid-template-columns: 1fr;
+  }
+  .smp-phone__body {
+    height: 560px;
+  }
+}
+
+</style>
+<style>
+  /* 本页专属：信息架构图 */
+  .wf-stage {
+    background: #fff;
+    border: 1px solid var(--smp-line);
+    border-radius: var(--smp-radius);
+    padding: 18px;
+    overflow: auto;
+    box-shadow: 0 6px 20px rgba(24, 28, 40, 0.06);
+  }
+  .wf-stage svg { display: block; }
+  .wf-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: var(--smp-ink3);
+    align-items: center;
+  }
+  .wf-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .wf-swatch { width: 13px; height: 13px; border-radius: 4px; display: inline-block; }
+  .wf-list { display: grid; gap: 14px; }
+  .wf-item {
+    background: #fff;
+    border: 1px solid var(--smp-line);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .wf-item__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .wf-item__no {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--smp-brand);
+    border-radius: 6px;
+    padding: 1px 7px;
+  }
+  .wf-item__title { font-size: 14.5px; font-weight: 650; }
+  .wf-item__api { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: #2f6fd0; }
+  .wf-item ul { margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: var(--smp-ink2); }
+  .wf-item li { margin: 2px 0; }
+  .wf-item li b { color: var(--smp-ink); }
+</style>
+</head>
+<body class="smp">
+  <header class="smp-head"><div class="smp-head__wrap">
+    <h1>页面结构与跳转</h1>
+    <p>
+      12 个画面的层级关系、页面内的主要区块，以及它们之间的跳转路径。
+      这张图对应前端代码里的路由表（<code>frontend/src/store.js</code> 的 <code>ROUTES</code>）
+      与底部标签栏（4 个主页面）。
+    </p>
+    <nav class="smp-nav">
+      <a href="index.html">原型总览</a>
+      <a href="02-screens-gallery.html">界面原型（可交互）</a>
+      <a href="03-wireframe.html" aria-current="page">页面结构与跳转</a>
+      <a href="04-class-diagram.html">类图</a>
+    </nav>
+  </div></header>
+
+  <main class="smp-main">
+    <div class="wf-stage">
+      <svg viewBox="0 0 1180 700" width="1180" height="700" role="img"
+           aria-label="SportsBuddy 页面结构与跳转示意图">
+        <defs>
+          <marker id="wf-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8"
+                  orient="auto-start-reverse">
+            <path d="M 0 1 L 11 6 L 0 11 z" fill="#98a1b5"/>
+          </marker>
+          <marker id="wf-arrow-brand" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8"
+                  orient="auto-start-reverse">
+            <path d="M 0 1 L 11 6 L 0 11 z" fill="#ff6a3d"/>
+          </marker>
+        </defs>
+
+        <text x="0" y="14" font-size="13" font-weight="650" fill="#4a5060">① 入口</text>
+        <text x="300" y="14" font-size="13" font-weight="650" fill="#4a5060">② 底部标签栏（4 个主页面，可互相切换）</text>
+        <text x="880" y="14" font-size="13" font-weight="650" fill="#4a5060">③ 二级页面</text>
+
+        <!-- 分隔线 -->
+        <line x1="286" y1="24" x2="286" y2="690" stroke="#e6e9f0" stroke-width="1" stroke-dasharray="4 5"/>
+        <line x1="866" y1="24" x2="866" y2="690" stroke="#e6e9f0" stroke-width="1" stroke-dasharray="4 5"/>
+
+        <!-- ============ P-01 登录 ============ -->
+        <g>
+          <rect x="0" y="34" width="248" height="150" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="0" y="34" width="248" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="0" y="56" width="248" height="12" fill="#eef0fb"/>
+          <rect x="2" y="34" width="4" height="150" rx="2" fill="#ff6a3d"/>
+          <text x="14" y="56" font-size="13" font-weight="650" fill="#1d2130">P-01 登录 / 注册</text>
+          <text x="14" y="86" font-size="11.5" fill="#7b8398">[ 登录 | 注册 ] 分段开关</text>
+          <text x="14" y="104" font-size="11.5" fill="#7b8398">[ 用户名 ]  [ 密码 ]</text>
+          <text x="14" y="122" font-size="11.5" fill="#7b8398">[ 注册并登录 ]（主按钮）</text>
+          <text x="14" y="140" font-size="11.5" fill="#7b8398">[ 用演示账号体验 ]</text>
+          <text x="14" y="164" font-size="11" fill="#98a1b5">POST /auth/login · /auth/register</text>
+        </g>
+
+        <!-- ============ P-02 找局 ============ -->
+        <g>
+          <rect x="300" y="34" width="256" height="196" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="300" y="34" width="256" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="300" y="56" width="256" height="12" fill="#eef0fb"/>
+          <rect x="302" y="34" width="4" height="196" rx="2" fill="#ff6a3d"/>
+          <text x="314" y="56" font-size="13" font-weight="650" fill="#1d2130">P-02 找局（默认页）</text>
+          <text x="314" y="86" font-size="11.5" fill="#7b8398">信用分卡片（环形 + 3 项统计）</text>
+          <text x="314" y="104" font-size="11.5" fill="#7b8398">一句话找局输入 + 例子 chips</text>
+          <text x="314" y="122" font-size="11.5" fill="#7b8398">条件筛选：项目 / 校区 / 水平</text>
+          <text x="314" y="140" font-size="11.5" fill="#7b8398">推荐卡片（含"为什么推荐"标签）</text>
+          <text x="314" y="158" font-size="11.5" fill="#7b8398">最近活动流（最多 6 条）</text>
+          <text x="314" y="176" font-size="11.5" fill="#7b8398">悬浮按钮 ＋ 发起活动</text>
+          <text x="314" y="196" font-size="11" fill="#98a1b5">GET /match/parse · /match · /activities</text>
+          <rect x="306" y="206" width="244" height="18" rx="9" fill="#e8f8f2"/>
+          <text x="314" y="219" font-size="11" fill="#0a6b52">底部标签栏：找局 | 活动 | 我的局 | 我的</text>
+        </g>
+
+        <!-- ============ P-03 活动列表 ============ -->
+        <g>
+          <rect x="300" y="252" width="256" height="164" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="300" y="252" width="256" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="300" y="274" width="256" height="12" fill="#eef0fb"/>
+          <rect x="302" y="252" width="4" height="164" rx="2" fill="#ff6a3d"/>
+          <text x="314" y="274" font-size="13" font-weight="650" fill="#1d2130">P-03 活动列表</text>
+          <text x="314" y="304" font-size="11.5" fill="#7b8398">横向筛选 chips × 5 行</text>
+          <text x="314" y="322" font-size="11.5" fill="#7b8398">（项目 / 状态 / 时间 / 校区 / 水平）</text>
+          <text x="314" y="340" font-size="11.5" fill="#7b8398">只看还有空位（开关）</text>
+          <text x="314" y="358" font-size="11.5" fill="#7b8398">活动卡片列表（带名额进度条）</text>
+          <text x="314" y="376" font-size="11.5" fill="#7b8398">[ 加载更多 ]  空态 / 重置筛选</text>
+          <text x="314" y="398" font-size="11" fill="#98a1b5">GET /activities（分页 limit/offset）</text>
+        </g>
+
+        <!-- ============ P-09 我的局 ============ -->
+        <g>
+          <rect x="300" y="438" width="256" height="150" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="300" y="438" width="256" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="300" y="460" width="256" height="12" fill="#eef0fb"/>
+          <rect x="302" y="438" width="4" height="150" rx="2" fill="#ff6a3d"/>
+          <text x="314" y="460" font-size="13" font-weight="650" fill="#1d2130">P-09 我的局</text>
+          <text x="314" y="490" font-size="11.5" fill="#7b8398">[ 我发起的 | 我报名的 ] 切换</text>
+          <text x="314" y="508" font-size="11.5" fill="#7b8398">我发起：看签到码 / 记录考勤 / 取消</text>
+          <text x="314" y="526" font-size="11.5" fill="#7b8398">我报名：去签到 / 评价 / 取消报名</text>
+          <text x="314" y="544" font-size="11.5" fill="#7b8398">取消前二次确认（临期提醒扣分）</text>
+          <text x="314" y="566" font-size="11" fill="#98a1b5">GET /activities/mine</text>
+        </g>
+
+        <!-- ============ P-10 我的 ============ -->
+        <g>
+          <rect x="300" y="610" width="256" height="76" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="300" y="610" width="256" height="34" rx="12" fill="#eef0fb"/>
+          <rect x="300" y="632" width="256" height="12" fill="#eef0fb"/>
+          <rect x="302" y="610" width="4" height="76" rx="2" fill="#ff6a3d"/>
+          <text x="314" y="632" font-size="13" font-weight="650" fill="#1d2130">P-10 我的</text>
+          <text x="314" y="660" font-size="11.5" fill="#7b8398">资料 / 信用分 / 收到的评价 / 退出登录</text>
+          <text x="314" y="678" font-size="11" fill="#98a1b5">GET · PATCH /me · GET /users/{id}/reviews</text>
+        </g>
+
+        <!-- ============ 右侧：二级页面 ============ -->
+        <g>
+          <rect x="880" y="34" width="290" height="152" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="34" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="56" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="34" width="4" height="152" rx="2" fill="#12b5a5"/>
+          <text x="894" y="56" font-size="13" font-weight="650" fill="#1d2130">P-04 / P-05 活动详情</text>
+          <text x="894" y="84" font-size="11.5" fill="#7b8398">状态标签行 + 标题 + 时间地点</text>
+          <text x="894" y="102" font-size="11.5" fill="#7b8398">事实卡片（时间/地点/人数/费用/发起人）</text>
+          <text x="894" y="120" font-size="11.5" fill="#7b8398"><tspan fill="#0a6b52">参与者：</tspan>[ 立即报名 ]（二次确认弹层）</text>
+          <text x="894" y="138" font-size="11.5" fill="#7b8398"><tspan fill="#8a5800">发起人：</tspan>签到码 4 格 + 记录考勤 + 取消</text>
+          <text x="894" y="156" font-size="11.5" fill="#7b8398">参与者名单（含签到状态）</text>
+          <text x="894" y="176" font-size="11" fill="#98a1b5">GET /activities/{id} · POST · DELETE /join</text>
+        </g>
+
+        <g>
+          <rect x="880" y="206" width="290" height="128" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="206" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="228" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="206" width="4" height="128" rx="2" fill="#12b5a5"/>
+          <text x="894" y="228" font-size="13" font-weight="650" fill="#1d2130">P-06 发起活动 / 编辑</text>
+          <text x="894" y="256" font-size="11.5" fill="#7b8398">标题 / 项目 / 水平（分段开关）</text>
+          <text x="894" y="274" font-size="11.5" fill="#7b8398">开始 + 结束时间（时长快捷按钮）</text>
+          <text x="894" y="292" font-size="11.5" fill="#7b8398">校区 / 地点 / 定位标记场地</text>
+          <text x="894" y="310" font-size="11.5" fill="#7b8398">人数上限 / 费用（元）/ 性别限制 / 说明</text>
+          <text x="894" y="328" font-size="11" fill="#98a1b5">POST /activities · PATCH /activities/{id}</text>
+        </g>
+
+        <g>
+          <rect x="880" y="354" width="290" height="112" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="354" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="376" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="354" width="4" height="112" rx="2" fill="#12b5a5"/>
+          <text x="894" y="376" font-size="13" font-weight="650" fill="#1d2130">P-07 签到</text>
+          <text x="894" y="404" font-size="11.5" fill="#7b8398">活动摘要 + 我的参与状态</text>
+          <text x="894" y="422" font-size="11.5" fill="#7b8398">方式一：4 位签到码（大字输入）</text>
+          <text x="894" y="440" font-size="11.5" fill="#7b8398">方式二：定位签到（300 米内）</text>
+          <text x="894" y="458" font-size="11.5" fill="#7b8398">成功后转"签到成功"结果页</text>
+          <text x="894" y="476" font-size="11" fill="#98a1b5">POST /activities/{id}/checkin</text>
+        </g>
+
+        <g>
+          <rect x="880" y="486" width="290" height="92" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="486" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="508" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="486" width="4" height="92" rx="2" fill="#12b5a5"/>
+          <text x="894" y="508" font-size="13" font-weight="650" fill="#1d2130">P-08 管理活动（仅发起人）</text>
+          <text x="894" y="536" font-size="11.5" fill="#7b8398">签到码大字展示 + 到场情况勾选</text>
+          <text x="894" y="554" font-size="11.5" fill="#7b8398">全选 / 全不选 / 提交考勤</text>
+          <text x="894" y="572" font-size="11" fill="#98a1b5">POST /activities/{id}/attendance · /cancel</text>
+        </g>
+
+        <g>
+          <rect x="880" y="598" width="290" height="88" rx="12" fill="#fff" stroke="#e0e4ec" stroke-width="1.3"/>
+          <rect x="880" y="598" width="290" height="34" rx="12" fill="#e9f7f5"/>
+          <rect x="880" y="620" width="290" height="12" fill="#e9f7f5"/>
+          <rect x="882" y="598" width="4" height="88" rx="2" fill="#12b5a5"/>
+          <text x="894" y="620" font-size="13" font-weight="650" fill="#1d2130">P-11 个人主页 / P-12 评价</text>
+          <text x="894" y="648" font-size="11.5" fill="#7b8398">主页：信用分、评价分布条形、印象标签</text>
+          <text x="894" y="666" font-size="11.5" fill="#7b8398">评价：星级 + 标签 + 一句话（仅到场可评）</text>
+          <text x="894" y="682" font-size="11" fill="#98a1b5">GET /users/{id} · /reviews · POST /reviews</text>
+        </g>
+
+        <!-- ============ 连线 ============ -->
+        <!-- 登录 → 找局 -->
+        <path d="M 248 109 H 300" fill="none" stroke="#ff6a3d" stroke-width="1.6"
+              marker-end="url(#wf-arrow-brand)"/>
+        <text x="252" y="103" font-size="10.5" fill="#ff6a3d">登录成功</text>
+
+        <!-- 标签栏内部切换 -->
+        <path d="M 556 109 H 576 V 538 H 556" fill="none" stroke="#98a1b5" stroke-width="1.4"/>
+        <text x="580" y="330" font-size="10.5" fill="#98a1b5">标签栏</text>
+
+        <!-- 主页面 → 二级 -->
+        <path d="M 556 120 H 700 V 110 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="700" y="104" font-size="10.5" fill="#98a1b5">点活动卡片</text>
+
+        <path d="M 556 96 H 660 V 270 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="626" y="90" font-size="10.5" fill="#98a1b5">＋ 发起 / 编辑</text>
+
+        <path d="M 556 500 H 640 V 410 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="600" y="494" font-size="10.5" fill="#98a1b5">去签到</text>
+
+        <path d="M 556 520 H 620 V 540 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="612" y="556" font-size="10.5" fill="#98a1b5">记录考勤</text>
+
+        <path d="M 556 620 H 620 V 640 H 880" fill="none" stroke="#98a1b5" stroke-width="1.4"
+              marker-end="url(#wf-arrow)"/>
+        <text x="600" y="614" font-size="10.5" fill="#98a1b5">我的主页 / 评价</text>
+
+        <!-- 详情 → 名单里的用户主页 -->
+        <path d="M 1025 186 V 200 H 1160 V 690 H 1100 V 686" fill="none" stroke="#c2c8d6"
+              stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="1032" y="200" font-size="10.5" fill="#98a1b5">名单里点「主页」→ P-11</text>
+      </svg>
+    </div>
+
+    <div class="wf-legend">
+      <span><i class="wf-swatch" style="background:#ff6a3d"></i> 主入口 / 标签栏主页面</span>
+      <span><i class="wf-swatch" style="background:#12b5a5"></i> 二级页面（带返回）</span>
+      <span><i class="wf-swatch" style="background:#c2c8d6"></i> 次要跳转（虚线）</span>
+      <span>每条页面下方标注了主要接口</span>
+    </div>
+
+    <section class="smp-notes" style="margin-top:26px">
+      <div class="smp-card">
+        <h2>路由表（与代码一致）</h2>
+        <table class="smp-table">
+          <thead><tr><th>hash 路由</th><th>页面</th><th>需要登录</th><th>底部标签</th></tr></thead>
+          <tbody>
+            <tr><td><code>#/login</code></td><td>登录 / 注册</td><td>否</td><td>—</td></tr>
+            <tr><td><code>#/discover</code></td><td>找局（默认）</td><td>否（游客可浏览）</td><td>找局</td></tr>
+            <tr><td><code>#/activities</code></td><td>活动列表</td><td>否</td><td>活动</td></tr>
+            <tr><td><code>#/activity/:id</code></td><td>活动详情</td><td>否（报名才要）</td><td>—</td></tr>
+            <tr><td><code>#/activity-new</code></td><td>发起活动</td><td><b>是</b></td><td>—</td></tr>
+            <tr><td><code>#/activity-new/:id</code></td><td>编辑活动（复用同页）</td><td><b>是</b></td><td>—</td></tr>
+            <tr><td><code>#/activity-manage/:id</code></td><td>管理活动</td><td><b>是</b>（且为发起人）</td><td>—</td></tr>
+            <tr><td><code>#/checkin/:id</code></td><td>签到</td><td><b>是</b></td><td>—</td></tr>
+            <tr><td><code>#/review/:activityId</code></td><td>评价同场伙伴</td><td><b>是</b></td><td>—</td></tr>
+            <tr><td><code>#/user/:id</code></td><td>个人主页</td><td>否</td><td>—</td></tr>
+            <tr><td><code>#/manage</code></td><td>我的局</td><td><b>是</b></td><td>我的局</td></tr>
+            <tr><td><code>#/me</code></td><td>我的</td><td>否（未登录显示引导）</td><td>我的</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="smp-card">
+        <h2>每个画面的区块清单</h2>
+        <div class="wf-list">
+          <div class="wf-item">
+            <div class="wf-item__head">
+              <span class="wf-item__no">P-02</span><span class="wf-item__title">找局</span>
+              <span class="wf-item__api">GET /match/parse</span>
+            </div>
+            <ul>
+              <li><b>信用分卡片</b>：环形进度 + 完成次数 / 爽约次数 / 评价均分</li>
+              <li><b>一句话找局</b>：单行输入 + 4 个示例 chip，回车即搜</li>
+              <li><b>条件筛选</b>：项目横向 chips + 校区 + 水平 + 只看有空位</li>
+              <li><b>推荐结果</b>：卡片右上角匹配分，卡内"为什么推荐"标签</li>
+              <li><b>最近活动</b>：最多 6 条 + 悬浮发起按钮</li>
+            </ul>
+          </div>
+          <div class="wf-item">
+            <div class="wf-item__head">
+              <span class="wf-item__no">P-04</span><span class="wf-item__title">活动详情</span>
+              <span class="wf-item__api">GET /activities/{id}</span>
+            </div>
+            <ul>
+              <li><b>状态行</b>：可报名 / 已满员 / 进行中 / 已结束 / 已取消</li>
+              <li><b>事实卡</b>：时间（本地时区）、地点、人数、费用、发起人信用分、说明</li>
+              <li><b>身份相关操作区</b>：发起人看到签到码与考勤，报名者看到签到与退报，其他人看到报名</li>
+              <li><b>参与者名单</b>：昵称、水平、信用分、签到状态、备注、主页入口</li>
+            </ul>
+          </div>
+          <div class="wf-item">
+            <div class="wf-item__head">
+              <span class="wf-item__no">P-07</span><span class="wf-item__title">签到</span>
+              <span class="wf-item__api">POST /activities/{id}/checkin</span>
+            </div>
+            <ul>
+              <li><b>两种方式并列</b>：4 位签到码（主）/ 定位（次）</li>
+              <li><b>失败态细分</b>：403 码错或超范围（显示具体米数）、409 已签到</li>
+              <li><b>成功态</b>：换成结果页，给出活动摘要与下一步入口</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <p class="smp-foot">
+    本页为手绘的信息架构图（内联 SVG），与 <code>frontend/src/store.js</code> 的 ROUTES 表保持一致；
+    改路由时请同步更新这里。
+  </p>
+</body>
+</html>

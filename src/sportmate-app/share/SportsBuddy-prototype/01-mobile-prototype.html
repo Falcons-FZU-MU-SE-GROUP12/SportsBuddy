@@ -1,0 +1,3738 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#ff6a3d" />
+<title>SportsBuddy · 移动端 HTML 原型（12 屏可跳转）</title>
+<style>
+/* ================= 设计令牌（与 frontend/assets/css/app.css 同源） ================= */
+/* ==========================================================================
+   SportsBuddy · 设计系统
+   --------------------------------------------------------------------------
+   这一份 CSS 同时服务两个交付物：
+     1) frontend/   真实可用前端（连后端或离线 mock）
+     2) prototype/  界面原型（复用同一套样式，保证原型与实现一致）
+   因此这里只放"与数据无关"的视觉规则，不放任何业务逻辑。
+   ========================================================================== */
+
+/* ---------- 1. 设计令牌 ---------- */
+:root {
+  /* 主色：活力橙（运动感），辅助色：青绿（信用分/成功） */
+  --brand: #ff6a3d;
+  --brand-600: #f2542d;
+  --brand-100: #fff1eb;
+  --accent: #12b5a5;
+  --accent-100: #e6f8f6;
+
+  /* 中性色阶 */
+  --ink: #16181d;
+  --ink-2: #4a5060;
+  --ink-3: #7b8398;
+  --line: #edeff4;
+  --line-2: #e0e4ec;
+  --surface: #ffffff;
+  --surface-2: #f6f7fb;
+  --bg: #f2f4f9;
+
+  /* 语义色 */
+  --ok: #10a37f;
+  --ok-bg: #e8f8f2;
+  --warn: #c07800;
+  --warn-bg: #fff6e0;
+  --danger: #d92d4b;
+  --danger-bg: #fdecef;
+  --info: #2f6fd0;
+  --info-bg: #eaf2fe;
+
+  /* 形状与阴影 */
+  --r-sm: 8px;
+  --r: 12px;
+  --r-lg: 18px;
+  --r-pill: 999px;
+  --sh-1: 0 1px 2px rgba(22, 24, 29, 0.05);
+  --sh-2: 0 4px 14px rgba(22, 24, 29, 0.07);
+  --sh-3: 0 12px 34px rgba(22, 24, 29, 0.12);
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
+  --font-num: "SF Mono", "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+/* ---------- 2. 归零 ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+figure {
+  margin: 0;
+}
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+a {
+  color: var(--brand-600);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---------- 3. 布局骨架 ---------- */
+.sm-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.sm-main {
+  flex: 1;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+}
+.sm-main--wide {
+  max-width: 900px;
+}
+.sm-stack > * + * {
+  margin-top: 14px;
+}
+.sm-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sm-row--wrap {
+  flex-wrap: wrap;
+}
+.sm-row--between {
+  justify-content: space-between;
+}
+.sm-spacer {
+  flex: 1;
+}
+.sm-hide {
+  display: none !important;
+}
+
+/* ---------- 4. 顶部栏 ---------- */
+.sm-appbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.sm-appbar__inner {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sm-appbar__title {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.sm-appbar__sub {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sm-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.sm-brand__mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--brand) 0%, #ff9166 100%);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  box-shadow: 0 3px 10px rgba(255, 106, 61, 0.32);
+}
+.sm-brand__name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.sm-backbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  color: var(--ink-2);
+  flex: none;
+}
+.sm-backbtn:hover {
+  background: var(--surface-2);
+}
+
+/* ---------- 5. 卡片 ---------- */
+.sm-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+  padding: 16px;
+}
+.sm-card--flat {
+  box-shadow: none;
+}
+.sm-card--brand {
+  background: linear-gradient(140deg, #fff 0%, var(--brand-100) 100%);
+  border-color: #ffd9c9;
+}
+.sm-card__title {
+  font-size: 15px;
+  font-weight: 650;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sm-card__hint {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+.sm-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 12px 0;
+  border: 0;
+}
+
+/* ---------- 6. 按钮 ---------- */
+.sm-btn {
+  --btn-bg: #fff;
+  --btn-fg: var(--ink);
+  --btn-bd: var(--line-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  min-height: 42px;
+  border-radius: var(--r);
+  border: 1px solid var(--btn-bd);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.06s ease, filter 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+.sm-btn:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+.sm-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.sm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.sm-btn--primary {
+  --btn-bg: var(--brand);
+  --btn-fg: #fff;
+  --btn-bd: var(--brand);
+  box-shadow: 0 4px 12px rgba(255, 106, 61, 0.28);
+}
+.sm-btn--accent {
+  --btn-bg: var(--accent);
+  --btn-fg: #fff;
+  --btn-bd: var(--accent);
+}
+.sm-btn--ghost {
+  --btn-bg: var(--surface-2);
+  --btn-bd: transparent;
+  color: var(--ink-2);
+}
+.sm-btn--danger {
+  --btn-fg: var(--danger);
+  --btn-bd: #f6c9d2;
+  --btn-bg: #fff;
+}
+.sm-btn--block {
+  width: 100%;
+}
+.sm-btn--sm {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+.sm-btn--lg {
+  min-height: 50px;
+  font-size: 16px;
+  border-radius: 14px;
+}
+
+/* ---------- 7. 表单 ---------- */
+.sm-field {
+  display: block;
+}
+.sm-field + .sm-field {
+  margin-top: 12px;
+}
+.sm-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+.sm-label__opt {
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.sm-input,
+.sm-select,
+.sm-textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.sm-textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+.sm-input:focus,
+.sm-select:focus,
+.sm-textarea:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(255, 106, 61, 0.14);
+}
+.sm-input::placeholder,
+.sm-textarea::placeholder {
+  color: #a9b0c0;
+}
+.sm-input[type="number"] {
+  font-family: var(--font-num);
+}
+.sm-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 420px) {
+  .sm-grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+.sm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.sm-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand);
+  flex: none;
+}
+.sm-switch {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+  padding: 3px;
+  gap: 2px;
+}
+.sm-switch button {
+  border: 0;
+  background: transparent;
+  padding: 7px 16px;
+  border-radius: var(--r-pill);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.sm-switch button[aria-pressed="true"] {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: var(--sh-1);
+}
+
+/* ---------- 8. 标签 / 徽标 ---------- */
+.sm-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+.sm-tag--brand {
+  background: var(--brand-100);
+  color: var(--brand-600);
+}
+.sm-tag--ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.sm-tag--warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.sm-tag--danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.sm-tag--info {
+  background: var(--info-bg);
+  color: var(--info);
+}
+.sm-tag--ghost {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--ink-3);
+}
+.sm-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* ---------- 9. 活动卡片 ---------- */
+.sm-act {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 14px;
+  box-shadow: var(--sh-1);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+}
+.sm-act:hover {
+  box-shadow: var(--sh-2);
+  border-color: #ffd9c9;
+}
+.sm-act:active {
+  transform: scale(0.995);
+}
+.sm-act__head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.sm-act__sport {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--brand-100);
+  display: grid;
+  place-items: center;
+  font-size: 21px;
+  flex: none;
+}
+.sm-act__title {
+  font-size: 15.5px;
+  font-weight: 660;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sm-act__meta {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-top: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.sm-act__meta b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.sm-act__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sm-act__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px dashed var(--line-2);
+}
+.sm-act__org {
+  font-size: 12px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sm-act__org b {
+  color: var(--ink-2);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sm-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  flex: none;
+}
+.sm-avatar--lg {
+  width: 46px;
+  height: 46px;
+  font-size: 18px;
+}
+
+/* 座位进度条 */
+.sm-seats {
+  margin-top: 11px;
+}
+.sm-seats__bar {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.sm-seats__fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent) 0%, #4fd6c6 100%);
+}
+.sm-seats__fill--full {
+  background: linear-gradient(90deg, #f0a500 0%, #ffc94d 100%);
+}
+.sm-seats__txt {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 5px;
+}
+.sm-seats__txt b {
+  color: var(--ink-2);
+  font-family: var(--font-num);
+}
+
+/* ---------- 10. 匹配理由 ---------- */
+.sm-reason {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sm-score {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--brand-600);
+  background: var(--brand-100);
+  padding: 2px 9px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-num);
+}
+
+/* ---------- 11. 一句话找局 ---------- */
+.sm-nlp {
+  background: linear-gradient(140deg, #2b2f3a 0%, #454b5c 100%);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  color: #fff;
+  box-shadow: var(--sh-2);
+}
+.sm-nlp__label {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.66);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sm-nlp__row {
+  display: flex;
+  gap: 8px;
+}
+.sm-nlp__input {
+  flex: 1;
+  border: 0;
+  border-radius: var(--r);
+  padding: 12px 13px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  outline: none;
+  min-width: 0;
+}
+.sm-nlp__input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+.sm-nlp .sm-btn--primary {
+  box-shadow: none;
+}
+.sm-nlp__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sm-nlp__chip {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.88);
+  border-radius: var(--r-pill);
+  padding: 4px 11px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.sm-nlp__chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ---------- 12. 筛选条 ---------- */
+.sm-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  scrollbar-width: none;
+}
+.sm-filters::-webkit-scrollbar {
+  display: none;
+}
+.sm-chip {
+  border: 1px solid var(--line-2);
+  background: #fff;
+  border-radius: var(--r-pill);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: none;
+}
+.sm-chip[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.sm-chip--mini {
+  padding: 5px 11px;
+  font-size: 12.5px;
+}
+
+/* ---------- 13. 信用分 ---------- */
+.sm-credit {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.sm-credit__ring {
+  flex: none;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.sm-credit__num {
+  font-family: var(--font-num);
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1;
+}
+.sm-credit__unit {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  display: block;
+  text-align: center;
+  margin-top: 3px;
+}
+.sm-credit__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  flex: 1;
+}
+.sm-stat {
+  text-align: center;
+  background: var(--surface-2);
+  border-radius: var(--r);
+  padding: 8px 4px;
+}
+.sm-stat__num {
+  font-family: var(--font-num);
+  font-size: 16px;
+  font-weight: 700;
+}
+.sm-stat__label {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+
+/* ---------- 14. 时间线 / 列表行 ---------- */
+.sm-list {
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.sm-list__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  width: 100%;
+  text-align: left;
+}
+.sm-list__item + .sm-list__item {
+  border-top: 1px solid var(--line);
+}
+.sm-list__item:hover {
+  background: var(--surface-2);
+}
+.sm-list__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  flex: none;
+}
+.sm-list__body {
+  flex: 1;
+  min-width: 0;
+}
+.sm-list__title {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.sm-list__desc {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+.sm-list__chev {
+  color: #c2c8d6;
+  font-size: 17px;
+  flex: none;
+}
+
+/* ---------- 15. 详情页 ---------- */
+.sm-hero {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 18px 16px 20px;
+}
+.sm-hero__inner {
+  max-width: 520px;
+  margin: 0 auto;
+}
+.sm-hero__title {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+.sm-facts {
+  display: grid;
+  gap: 10px;
+}
+.sm-fact {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13.5px;
+}
+.sm-fact__k {
+  width: 68px;
+  flex: none;
+  color: var(--ink-3);
+}
+.sm-fact__v {
+  flex: 1;
+  color: var(--ink);
+  font-weight: 500;
+}
+.sm-code {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 2px;
+}
+.sm-code__cell {
+  flex: 1;
+  background: var(--ink);
+  color: #fff;
+  border-radius: var(--r);
+  font-family: var(--font-num);
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px 0;
+  letter-spacing: 2px;
+}
+.sm-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+.sm-member + .sm-member {
+  border-top: 1px solid var(--line);
+}
+.sm-member__body {
+  flex: 1;
+  min-width: 0;
+}
+.sm-member__name {
+  font-size: 14px;
+  font-weight: 620;
+}
+.sm-member__sub {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+/* ---------- 16. 反馈条 ---------- */
+.sm-alert {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 11px 13px;
+  border-radius: var(--r);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.sm-alert--error {
+  background: var(--danger-bg);
+  color: #8f1730;
+}
+.sm-alert--ok {
+  background: var(--ok-bg);
+  color: #0a6b52;
+}
+.sm-alert--info {
+  background: var(--info-bg);
+  color: #1c4e97;
+}
+.sm-alert--warn {
+  background: var(--warn-bg);
+  color: #8a5800;
+}
+.sm-alert__icon {
+  flex: none;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* ---------- 17. 空态 / 加载 ---------- */
+.sm-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-3);
+}
+.sm-empty__icon {
+  font-size: 34px;
+  margin-bottom: 8px;
+  opacity: 0.75;
+}
+.sm-empty__title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.sm-empty__desc {
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+.sm-skel {
+  border-radius: var(--r);
+  background: linear-gradient(90deg, #eef0f5 25%, #f6f7fa 37%, #eef0f5 63%);
+  background-size: 400% 100%;
+  animation: sm-shimmer 1.3s ease infinite;
+}
+@keyframes sm-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* ---------- 18. 底部标签栏 ---------- */
+.sm-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(14px);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.sm-tabbar__inner {
+  max-width: 520px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.sm-tab {
+  border: 0;
+  background: none;
+  padding: 8px 0 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sm-tab__icon {
+  font-size: 19px;
+  line-height: 1.1;
+  filter: grayscale(1);
+  opacity: 0.62;
+}
+.sm-tab[aria-current="page"] {
+  color: var(--brand-600);
+}
+.sm-tab[aria-current="page"] .sm-tab__icon {
+  filter: none;
+  opacity: 1;
+}
+.sm-fab {
+  position: fixed;
+  right: max(16px, calc(50% - 260px + 16px));
+  bottom: 78px;
+  z-index: 31;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  border: 0;
+  background: var(--brand);
+  color: #fff;
+  font-size: 25px;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(255, 106, 61, 0.42);
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+.sm-fab:active {
+  transform: translateY(1px);
+}
+
+/* ---------- 19. 认证页 ---------- */
+.sm-auth {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: radial-gradient(120% 80% at 50% 0%, #fff3ee 0%, var(--bg) 58%);
+}
+.sm-auth__card {
+  width: 100%;
+  max-width: 392px;
+}
+.sm-auth__logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 19px;
+  background: linear-gradient(135deg, var(--brand) 0%, #ff9166 100%);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  margin: 0 auto 14px;
+  box-shadow: 0 10px 26px rgba(255, 106, 61, 0.36);
+}
+.sm-auth__title {
+  text-align: center;
+  font-size: 23px;
+  font-weight: 720;
+  letter-spacing: -0.02em;
+}
+.sm-auth__sub {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+  margin: 5px 0 20px;
+}
+.sm-auth__foot {
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 16px;
+  line-height: 1.7;
+}
+
+/* ---------- 20. 弹层 ---------- */
+.sm-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(18, 20, 26, 0.44);
+  padding: 0;
+}
+.sm-sheet__panel {
+  background: #fff;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 20px 20px 0 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: var(--sh-3);
+}
+.sm-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.sm-sheet__title {
+  font-size: 16.5px;
+  font-weight: 680;
+}
+@media (min-width: 560px) {
+  .sm-sheet {
+    align-items: center;
+  }
+  .sm-sheet__panel {
+    border-radius: 20px;
+    max-width: 460px;
+  }
+}
+
+/* ---------- 21. 星评 ---------- */
+.sm-stars {
+  display: flex;
+  gap: 6px;
+}
+.sm-star {
+  border: 0;
+  background: none;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  color: #d9dde7;
+  padding: 0;
+}
+.sm-star[aria-checked="true"] {
+  color: #ffb020;
+}
+.sm-bars {
+  display: grid;
+  gap: 6px;
+}
+.sm-bar {
+  display: grid;
+  grid-template-columns: 68px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sm-bar__track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.sm-bar__fill {
+  height: 100%;
+  border-radius: 99px;
+  background: #ffb020;
+}
+.sm-bar__num {
+  text-align: right;
+  font-family: var(--font-num);
+  color: var(--ink-2);
+}
+
+/* ---------- 22. 离线提示 ---------- */
+.sm-offline {
+  background: #2b2f3a;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+  padding: 6px 12px;
+}
+.sm-offline b {
+  color: #ffd08a;
+}
+
+/* ---------- 23. 桌面端适配 ---------- */
+@media (min-width: 900px) {
+  .sm-main,
+  .sm-appbar__inner,
+  .sm-hero__inner {
+    max-width: 760px;
+  }
+  .sm-act-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .sm-act-grid > * + * {
+    margin-top: 0;
+  }
+}
+
+
+/* ================= 原型外壳：桌面端显示手机框，手机端全屏 ================= */
+html, body { height: 100%; }
+body.proto {
+  margin: 0;
+  background: #e9ecf3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font);
+}
+.proto-stage {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  background: var(--bg);
+  border-radius: 34px;
+  box-shadow: 0 26px 70px rgba(20, 24, 38, .28), 0 0 0 10px #1b1e26, 0 0 0 12px #33363f;
+  overflow: hidden;
+}
+/* 手机端：去掉外壳，铺满整屏 */
+@media (max-width: 560px), (max-height: 720px) {
+  body.proto { display: block; background: var(--bg); }
+  .proto-stage {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .proto-chrome { display: none; }
+  .proto-screen { height: 100%; }
+}
+
+/* ================= 屏幕容器：一次只显示一屏 ================= */
+.proto-screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  display: none;
+  background: var(--bg);
+}
+.proto-screen.is-active { display: block; }
+.screen__inner { min-height: 100%; padding-bottom: 8px; }
+
+/* ================= 顶部工具条（仅桌面端） ================= */
+.proto-chrome {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(255,255,255,.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink2);
+}
+.proto-chrome__label { font-weight: 650; color: var(--ink); }
+.proto-chrome__note { color: var(--ink3); font-size: 12px; margin-left: 4px; }
+.proto-chrome__spacer { flex: 1; }
+.proto-chrome button {
+  font: inherit; font-size: 12.5px; font-weight: 600;
+  border: 1px solid var(--line2); background: #fff; color: var(--ink2);
+  border-radius: 9px; padding: 6px 11px; cursor: pointer;
+}
+.proto-chrome button:hover { background: var(--surface-2); }
+.proto-chrome button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+@media (min-width: 561px) { body.proto { padding-top: 46px; } }
+
+/* ================= 屏幕跳转菜单 ================= */
+.jump-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(18,20,26,.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.jump-menu.is-open { display: flex; }
+.jump-menu__panel {
+  width: min(720px, 100%);
+  max-height: 80vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--sh-3);
+}
+.jump-menu__head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.jump-menu__head h2 { margin: 0; font-size: 16px; }
+.jump-menu__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.jump {
+  display: flex; align-items: center; gap: 9px;
+  text-align: left; font: inherit; font-size: 13px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 11px; cursor: pointer; color: var(--ink);
+}
+.jump:hover { background: var(--brand-100); border-color: #ffd9c9; }
+.jump b {
+  flex: none; width: 22px; height: 22px; border-radius: 7px;
+  background: var(--brand); color: #fff; font-size: 11px;
+  display: grid; place-items: center;
+}
+.jump span { flex: 1; min-width: 0; }
+
+/* ================= 热区提示 ================= */
+body.hotspots-on [data-action],
+body.hotspots-on [data-goto] {
+  outline: 2px dashed rgba(255, 106, 61, .85) !important;
+  outline-offset: 2px;
+  border-radius: 6px;
+  position: relative;
+}
+body.hotspots-on [data-action]::after {
+  content: attr(data-action);
+  position: absolute;
+  top: -8px; left: 0;
+  transform: translateY(-100%);
+  background: var(--ink);
+  color: #fff;
+  font-size: 9px;
+  font-family: var(--font-num);
+  padding: 1px 4px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+  opacity: .92;
+}
+
+/* ================= 轻提示 ================= */
+.proto-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(12px);
+  background: rgba(22,24,29,.94);
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 1.5;
+  padding: 9px 14px;
+  border-radius: 10px;
+  max-width: min(520px, calc(100vw - 32px));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+  z-index: 200;
+}
+.proto-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* =========================================================================
+   适配"手机框"的三个覆盖
+   -------------------------------------------------------------------------
+   app.css 里有些尺寸是相对浏览器窗口写的，放进 390×844 的手机框后会算错：
+     · .sm-auth / .sm-shell 用了 min-height: 100vh → 按浏览器高度算，会溢出
+     · .sm-fab 用了 position: fixed → 跑到手机框外面
+     · .sm-tabbar 用了 position: fixed → 横跨整个浏览器窗口
+   这里按"框内"重算。
+   ========================================================================= */
+
+/* 1) vh 改成 100%，按手机框算 */
+.screen__inner .sm-shell { min-height: 100%; }
+.screen__inner .sm-auth { min-height: 844px; }
+
+/* 2) 底部标签栏：改 sticky，贴住滚动视口的底边（不需要算偏移，最稳） */
+.screen__inner .sm-tabbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+}
+
+/* 3) 悬浮按钮：改成 fixed，但偏移按"居中的手机框"重算
+      right = 框右边缘（50% + 195px）往内 16px
+      bottom = 框底边缘（50vh + 422px - 46px 顶栏）往上 78px */
+.screen__inner .sm-fab {
+  position: fixed;
+  right: calc(50% - 179px);
+  bottom: calc(50vh - 367px);
+}
+/* 手机端：框就是整屏，恢复成贴近屏幕右下角 */
+@media (max-width: 560px), (max-height: 720px) {
+  .screen__inner .sm-fab { right: 16px; bottom: 78px; }
+}
+
+/* 4) 有标签栏的屏留出底部空间，避免最后一条内容被栏挡住 */
+.screen__inner .sm-main { padding-bottom: 96px; }
+</style>
+</head>
+<body class="proto">
+
+<!-- ===================== 桌面端工具条 ===================== -->
+<div class="proto-chrome">
+  <span class="proto-chrome__label" id="chromeLabel">P-01 登录 / 注册</span>
+  <span class="proto-chrome__note" id="chromeNote"></span>
+  <span class="proto-chrome__spacer"></span>
+  <button type="button" data-nav="prev">← 上一屏</button>
+  <button type="button" data-nav="next">下一屏 →</button>
+  <button type="button" id="btnJump">☰ 全部 12 屏</button>
+  <button type="button" id="btnHotspots" aria-pressed="false">显示热区</button>
+</div>
+
+<!-- ===================== 12 屏 ===================== -->
+<div class="proto-stage" id="stage">
+    <section class="screen" id="p01" data-no="P-01" data-title="登录 / 注册">
+      <!--SCREEN-START:p01-->
+      <div class="screen__inner">
+<div class="sm-auth">
+      <div class="sm-auth__card">
+        <div class="sm-auth__logo" aria-hidden="true">🏸</div>
+        <h1 class="sm-auth__title">SportsBuddy</h1>
+        <p class="sm-auth__sub">校园运动组局 · 找到时间、水平、地点都合适的搭子</p>
+
+        <div class="sm-card">
+          <div class="sm-switch" style="width:100%;margin-bottom:16px" role="group" aria-label="登录或注册">
+            <button type="button" style="flex:1" data-action="mode" data-value="login" aria-pressed="true">登录</button>
+            <button type="button" style="flex:1" data-action="mode" data-value="register" aria-pressed="false">注册</button>
+          </div>
+
+          
+
+          <form data-action="submit" novalidate>
+            <label class="sm-field">
+    <span class="sm-label">用户名</span>
+    <input class="sm-input" name="username" type="text" value=""
+     placeholder="字母、数字、下划线，至少 3 位" autocomplete="username" autocapitalize="off" />
+    
+  </label>
+            <label class="sm-field">
+    <span class="sm-label">密码</span>
+    <input class="sm-input" name="password" type="password" value=""
+     placeholder="至少 6 位" autocomplete="current-password" />
+    
+  </label>
+
+            
+
+            <button class="sm-btn sm-btn--primary sm-btn--block sm-btn--lg" type="submit"
+              style="margin-top:18px" >
+              登录
+            </button>
+          </form>
+
+          <button class="sm-btn sm-btn--ghost sm-btn--block" type="button" style="margin-top:10px"
+            data-action="demo" >
+            用演示账号体验（林浩）
+          </button>
+        </div>
+
+        <p class="sm-auth__foot">
+          新账号默认信用分 100 分，低于 60 分无法报名新活动。<br />
+          登录状态会保存在本地，刷新不会掉线。
+        </p>
+        <p class="sm-auth__foot"><span class="sm-brand__mark" aria-hidden="true">🏸</span> 尚未登录</p>
+      </div>
+    </div>
+      </div>
+      <!--SCREEN-END:p01-->
+    </section>
+    <section class="screen" id="p02" data-no="P-02" data-title="找局首页">
+      <!--SCREEN-START:p02-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    <span class="sm-brand"><span class="sm-brand__mark" aria-hidden="true">🏸</span><span class="sm-brand__name">SportsBuddy</span></span>
+    
+    <span class="sm-spacer"></span>
+    <button class="sm-btn sm-btn--sm" type="button" data-action="go-new">＋ 发起</button>
+  </div></header><main class="sm-main sm-stack">
+      <section class="sm-card sm-credit">
+    <div class="sm-credit__ring" role="img" aria-label="信用分 96 分">
+      <svg width="78" height="78" viewBox="0 0 78 78" style="position:absolute;inset:0">
+        <circle cx="39" cy="39" r="32" fill="none" stroke="var(--surface-2)" stroke-width="7"></circle>
+        <circle cx="39" cy="39" r="32" fill="none" stroke="var(--accent)" stroke-width="7"
+          stroke-linecap="round" stroke-dasharray="193.01945263655688 201.06192982974676" transform="rotate(-90 39 39)"></circle>
+      </svg>
+      <span>
+        <span class="sm-credit__num" style="color:var(--accent)">96</span>
+        <span class="sm-credit__unit">信用分</span>
+      </span>
+    </div>
+    <div class="sm-credit__stats">
+      <div class="sm-stat"><div class="sm-stat__num">23</div><div class="sm-stat__label">完成次数</div></div>
+      <div class="sm-stat"><div class="sm-stat__num" style="color:inherit">0</div><div class="sm-stat__label">爽约次数</div></div>
+      <div class="sm-stat"><div class="sm-stat__num">4.8</div><div class="sm-stat__label">评价均分</div></div>
+    </div>
+  </section>
+  
+
+      <form data-action="match" data-enter>
+        <section class="sm-nlp">
+    <div class="sm-nlp__label"><span aria-hidden="true" style="font-size:18px;line-height:1">✨</span> 一句话找局 · 自动识别项目 / 校区 / 水平</div>
+    <div class="sm-nlp__row">
+      <input class="sm-nlp__input" name="sentence" value="今晚想在旗山校区打篮球，新手可以吗"
+        placeholder="今晚想在旗山校区打篮球，新手可以吗" aria-label="用一句话描述你想找的活动" />
+      <button class="sm-btn sm-btn--primary" type="button"
+    data-action="match" 
+     >找局</button>
+    </div>
+    <div class="sm-nlp__chips">
+      <button type="button" class="sm-nlp__chip" data-action="use-example" data-text="今晚想在旗山校区打篮球，新手可以吗">今晚想在旗山校区打篮球，新手可以吗</button><button type="button" class="sm-nlp__chip" data-action="use-example" data-text="明早铜盘校区有跑步的吗">明早铜盘校区有跑步的吗</button><button type="button" class="sm-nlp__chip" data-action="use-example" data-text="这周末羽毛球，水平一般">这周末羽毛球，水平一般</button><button type="button" class="sm-nlp__chip" data-action="use-example" data-text="想找人打乒乓球，晚上七点后">想找人打乒乓球，晚上七点后</button>
+    </div>
+  </section>
+      </form>
+
+      
+      
+
+      <section class="sm-stack">
+                 <div class="sm-row sm-row--between">
+                   <h3 class="sm-card__title" style="margin:0">为你找到 2 个</h3>
+                   <button class="sm-btn sm-btn--ghost sm-btn--sm" type="button"
+    data-action="clear-matches" 
+     >清空结果</button>
+                 </div>
+                 <p class="sm-card__hint" style="margin:-6px 0 0">已识别：项目「篮球」、校区「旗山校区」、水平「新手」</p>
+                 <article class="sm-act" data-action="open-activity" data-id="101" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏀</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">周三晚篮球 3v3，缺两人</div>
+        <div class="sm-act__meta">
+          <span>10-27 周二 22:02</span>
+          <span>·</span>
+          <span>旗山校区 风雨操场 3 号场</span>
+        </div>
+      </div>
+      <span class="sm-score">99 分</span>
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >篮球</span>
+      <span class="sm-tag " >不限水平</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    <div class="sm-reason"><span class="sm-tag sm-tag--ok" >项目匹配</span><span class="sm-tag sm-tag--ok" >水平合适</span><span class="sm-tag sm-tag--ok" >同校区</span><span class="sm-tag sm-tag--ok" >时间合适</span><span class="sm-tag sm-tag--ghost" >还有 3 位</span></div>
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:50%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>3/6</b></span>
+      <span>还差 <b>3</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">王</span>
+        <b>王妍</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="101">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="107" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏀</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">昨天那场篮球（已结束，用于评价演示）</div>
+        <div class="sm-act__meta">
+          <span>10-26 周一 14:02</span>
+          <span>·</span>
+          <span>旗山校区 风雨操场 1 号场</span>
+        </div>
+      </div>
+      <span class="sm-score">94 分</span>
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >篮球</span>
+      <span class="sm-tag " >不限水平</span>
+      <span class="sm-tag " >已结束</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    <div class="sm-reason"><span class="sm-tag sm-tag--ok" >项目匹配</span><span class="sm-tag sm-tag--ok" >水平合适</span><span class="sm-tag sm-tag--ok" >同校区</span><span class="sm-tag sm-tag--ghost" >还有 2 位</span></div>
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:67%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>4/6</b></span>
+      <span>还差 <b>2</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">林</span>
+        <b>林浩</b>
+        <span>信用 96</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--sm" type="button"
+     
+    disabled >已结束</button>
+      </span>
+    </div>
+  </article>
+               </section>
+
+      <section>
+        <h3 class="sm-card__title">按条件筛</h3>
+        <div class="sm-filters" role="group" data-chips="sport"><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value=""
+           aria-pressed="true">全部项目</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="篮球"
+           aria-pressed="false">🏀 篮球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="足球"
+           aria-pressed="false">⚽ 足球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="羽毛球"
+           aria-pressed="false">🏸 羽毛球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="乒乓球"
+           aria-pressed="false">🏓 乒乓球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="网球"
+           aria-pressed="false">🎾 网球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="排球"
+           aria-pressed="false">🏐 排球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="跑步"
+           aria-pressed="false">🏃 跑步</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="游泳"
+           aria-pressed="false">🏊 游泳</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="健身"
+           aria-pressed="false">🏋️ 健身</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="骑行"
+           aria-pressed="false">🚴 骑行</button></div>
+        <div class="sm-filters" role="group" data-chips="campus"><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value=""
+           aria-pressed="true">全部校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="旗山校区"
+           aria-pressed="false">旗山校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="铜盘校区"
+           aria-pressed="false">铜盘校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="怡山校区"
+           aria-pressed="false">怡山校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="晋江校区"
+           aria-pressed="false">晋江校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="厦门工艺美院"
+           aria-pressed="false">厦门工艺美院</button></div>
+        <div class="sm-filters" role="group" data-chips="skill_level"><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="skill_level" data-value=""
+           aria-pressed="true">不限水平</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="skill_level" data-value="beginner"
+           aria-pressed="false">新手</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="skill_level" data-value="intermediate"
+           aria-pressed="false">一般</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="skill_level" data-value="advanced"
+           aria-pressed="false">熟练</button></div>
+        <div class="sm-row" style="margin-top:10px">
+          <button class="sm-btn sm-btn--accent sm-btn--sm" type="button"
+    data-action="filter-match" 
+     >按条件匹配</button>
+          <label class="sm-check">
+            <input type="checkbox" name="only_available" checked
+              data-action="toggle-available" />
+            只看还有空位
+          </label>
+        </div>
+      </section>
+
+      <section id="recent" class="sm-stack">
+        <div class="sm-row sm-row--between">
+          <h3 class="sm-card__title" style="margin:0">最近的活动</h3>
+          <button class="sm-btn sm-btn--ghost sm-btn--sm" type="button"
+    data-action="go-activities" 
+     >看全部</button>
+        </div>
+        <article class="sm-act" data-action="open-activity" data-id="101" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏀</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">周三晚篮球 3v3，缺两人</div>
+        <div class="sm-act__meta">
+          <span>10-27 周二 22:02</span>
+          <span>·</span>
+          <span>旗山校区 风雨操场 3 号场</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >篮球</span>
+      <span class="sm-tag " >不限水平</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:50%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>3/6</b></span>
+      <span>还差 <b>3</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">王</span>
+        <b>王妍</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="101">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="102" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏃</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">晨跑 5 公里 · 旗山环校</div>
+        <div class="sm-act__meta">
+          <span>10-28 周三 17:02</span>
+          <span>·</span>
+          <span>旗山校区 田径场东门</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >跑步</span>
+      <span class="sm-tag sm-tag--ok" >新手</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:38%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>3/8</b></span>
+      <span>还差 <b>5</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">赵</span>
+        <b>赵琳</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="102">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="104" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">⚽</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">足球 5v5，还差 3 人</div>
+        <div class="sm-act__meta">
+          <span>10-30 周五 16:02</span>
+          <span>·</span>
+          <span>旗山校区 人工草皮足球场</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >足球</span>
+      <span class="sm-tag " >不限水平</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ghost" >¥5/人</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:30%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>3/10</b></span>
+      <span>还差 <b>7</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">孙</span>
+        <b>孙琦</b>
+        <span>信用 74</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="104">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="105" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏓</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">乒乓球约练，晚上七点后</div>
+        <div class="sm-act__meta">
+          <span>10-31 周六 18:02</span>
+          <span>·</span>
+          <span>铜盘校区 体育馆乒乓球室</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >乒乓球</span>
+      <span class="sm-tag sm-tag--ok" >新手</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:25%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>1/4</b></span>
+      <span>还差 <b>3</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">周</span>
+        <b>周雨</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="105">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="106" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏊</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">游泳自由练习（限女生）</div>
+        <div class="sm-act__meta">
+          <span>11-1 周日 21:02</span>
+          <span>·</span>
+          <span>旗山校区 校游泳馆</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >游泳</span>
+      <span class="sm-tag " >不限水平</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ghost" >¥20/人</span>
+      <span class="sm-tag sm-tag--warn" >限女生</span>
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:33%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>2/6</b></span>
+      <span>还差 <b>4</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">王</span>
+        <b>王妍</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="106">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="108" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🚴</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">周末骑行 · 旗山到鼓山</div>
+        <div class="sm-act__meta">
+          <span>11-2 周一 20:02</span>
+          <span>·</span>
+          <span>旗山校区 校门口广场</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >骑行</span>
+      <span class="sm-tag sm-tag--brand" >熟练</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:25%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>2/8</b></span>
+      <span>还差 <b>6</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">赵</span>
+        <b>赵琳</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="108">报名</button>
+      </span>
+    </div>
+  </article>
+      </section>
+
+      <p class="sm-card__hint" style="text-align:center;padding:6px 0 2px">
+        时间显示为本地时间，信用分低于 60 分无法报名新活动。
+      </p>
+
+      <button class="sm-fab" type="button"
+      data-action="go-new" 
+        aria-label="新建">＋</button>
+      <nav class="sm-tabbar" aria-label="主导航"><div class="sm-tabbar__inner">
+    <button class="sm-tab" type="button" data-action="nav" data-href="#/discover"
+        aria-current="page">
+        <span class="sm-tab__icon" aria-hidden="true">🔍</span>
+        <span>找局</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/activities"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">📋</span>
+        <span>活动</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/manage"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">🎯</span>
+        <span>我的局</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/me"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">👤</span>
+        <span>我的</span>
+      </button>
+  </div></nav>
+    </main>
+      </div>
+      <!--SCREEN-END:p02-->
+    </section>
+    <section class="screen" id="p03" data-no="P-03" data-title="活动列表">
+      <!--SCREEN-START:p03-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    
+    <div style="min-width:0">
+         <div class="sm-appbar__title">活动列表</div>
+         <div class="sm-appbar__sub">共 6 条</div>
+       </div>
+    <span class="sm-spacer"></span>
+    <button class="sm-btn sm-btn--sm" type="button" data-action="go-new">＋ 发起</button>
+  </div></header><main class="sm-main sm-stack">
+      <section>
+        <div class="sm-filters" role="group" data-chips="sport"><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value=""
+           aria-pressed="true">全部项目</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="篮球"
+           aria-pressed="false">🏀 篮球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="足球"
+           aria-pressed="false">⚽ 足球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="羽毛球"
+           aria-pressed="false">🏸 羽毛球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="乒乓球"
+           aria-pressed="false">🏓 乒乓球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="网球"
+           aria-pressed="false">🎾 网球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="排球"
+           aria-pressed="false">🏐 排球</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="跑步"
+           aria-pressed="false">🏃 跑步</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="游泳"
+           aria-pressed="false">🏊 游泳</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="健身"
+           aria-pressed="false">🏋️ 健身</button><button type="button" class="sm-chip "
+           data-action="filter" data-name="sport" data-value="骑行"
+           aria-pressed="false">🚴 骑行</button></div>
+        <div class="sm-filters" role="group" data-chips="status"><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="status" data-value=""
+           aria-pressed="false">不限状态</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="status" data-value="open"
+           aria-pressed="true">可报名</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="status" data-value="full"
+           aria-pressed="false">已满员</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="status" data-value="ongoing"
+           aria-pressed="false">进行中</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="status" data-value="finished"
+           aria-pressed="false">已结束</button></div>
+        <div class="sm-filters" role="group" data-chips="date"><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="date" data-value=""
+           aria-pressed="true">不限时间</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="date" data-value="today"
+           aria-pressed="false">今天</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="date" data-value="tomorrow"
+           aria-pressed="false">明天</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="date" data-value="week"
+           aria-pressed="false">近 7 天</button></div>
+        <div class="sm-filters" role="group" data-chips="campus"><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value=""
+           aria-pressed="true">全部校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="旗山校区"
+           aria-pressed="false">旗山校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="铜盘校区"
+           aria-pressed="false">铜盘校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="怡山校区"
+           aria-pressed="false">怡山校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="晋江校区"
+           aria-pressed="false">晋江校区</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="campus" data-value="厦门工艺美院"
+           aria-pressed="false">厦门工艺美院</button></div>
+        <div class="sm-filters" role="group" data-chips="skill_level"><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="skill_level" data-value=""
+           aria-pressed="true">不限水平</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="skill_level" data-value="beginner"
+           aria-pressed="false">新手</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="skill_level" data-value="intermediate"
+           aria-pressed="false">一般</button><button type="button" class="sm-chip sm-chip--mini"
+           data-action="filter" data-name="skill_level" data-value="advanced"
+           aria-pressed="false">熟练</button></div>
+
+        <div class="sm-row sm-row--between" style="margin-top:8px">
+          <label class="sm-check">
+            <input type="checkbox" name="only_available" checked
+              data-action="toggle-available" />
+            只看还有空位
+          </label>
+          
+        </div>
+      </section>
+
+      
+
+      <section class="sm-stack">
+                 <article class="sm-act" data-action="open-activity" data-id="101" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏀</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">周三晚篮球 3v3，缺两人</div>
+        <div class="sm-act__meta">
+          <span>10-27 周二 22:02</span>
+          <span>·</span>
+          <span>旗山校区 风雨操场 3 号场</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >篮球</span>
+      <span class="sm-tag " >不限水平</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:50%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>3/6</b></span>
+      <span>还差 <b>3</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">王</span>
+        <b>王妍</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="101">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="102" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏃</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">晨跑 5 公里 · 旗山环校</div>
+        <div class="sm-act__meta">
+          <span>10-28 周三 17:02</span>
+          <span>·</span>
+          <span>旗山校区 田径场东门</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >跑步</span>
+      <span class="sm-tag sm-tag--ok" >新手</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:38%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>3/8</b></span>
+      <span>还差 <b>5</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">赵</span>
+        <b>赵琳</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="102">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="104" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">⚽</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">足球 5v5，还差 3 人</div>
+        <div class="sm-act__meta">
+          <span>10-30 周五 16:02</span>
+          <span>·</span>
+          <span>旗山校区 人工草皮足球场</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >足球</span>
+      <span class="sm-tag " >不限水平</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ghost" >¥5/人</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:30%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>3/10</b></span>
+      <span>还差 <b>7</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">孙</span>
+        <b>孙琦</b>
+        <span>信用 74</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="104">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="105" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏓</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">乒乓球约练，晚上七点后</div>
+        <div class="sm-act__meta">
+          <span>10-31 周六 18:02</span>
+          <span>·</span>
+          <span>铜盘校区 体育馆乒乓球室</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >乒乓球</span>
+      <span class="sm-tag sm-tag--ok" >新手</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:25%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>1/4</b></span>
+      <span>还差 <b>3</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">周</span>
+        <b>周雨</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="105">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="106" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🏊</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">游泳自由练习（限女生）</div>
+        <div class="sm-act__meta">
+          <span>11-1 周日 21:02</span>
+          <span>·</span>
+          <span>旗山校区 校游泳馆</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >游泳</span>
+      <span class="sm-tag " >不限水平</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ghost" >¥20/人</span>
+      <span class="sm-tag sm-tag--warn" >限女生</span>
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:33%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>2/6</b></span>
+      <span>还差 <b>4</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">王</span>
+        <b>王妍</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="106">报名</button>
+      </span>
+    </div>
+  </article><article class="sm-act" data-action="open-activity" data-id="108" role="button" tabindex="0">
+    <div class="sm-act__head">
+      <span class="sm-act__sport" aria-hidden="true">🚴</span>
+      <div style="flex:1;min-width:0">
+        <div class="sm-act__title">周末骑行 · 旗山到鼓山</div>
+        <div class="sm-act__meta">
+          <span>11-2 周一 20:02</span>
+          <span>·</span>
+          <span>旗山校区 校门口广场</span>
+        </div>
+      </div>
+      
+    </div>
+
+    <div class="sm-act__tags">
+      <span class="sm-tag sm-tag--brand" >骑行</span>
+      <span class="sm-tag sm-tag--brand" >熟练</span>
+      <span class="sm-tag sm-tag--ok" >可报名</span>
+      <span class="sm-tag sm-tag--ok" >免费</span>
+      
+    </div>
+
+    
+
+    <div class="sm-seats">
+    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:25%"></div></div>
+    <div class="sm-seats__txt">
+      <span>已报名 <b>2/8</b></span>
+      <span>还差 <b>6</b> 人</span>
+    </div>
+  </div>
+
+    <div class="sm-act__foot">
+      <span class="sm-act__org">
+        <span class="sm-avatar" aria-hidden="true">赵</span>
+        <b>赵琳</b>
+        <span>信用 100</span>
+      </span>
+      <span style="display:flex;gap:8px">
+        
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="join" 
+     data-id="108">报名</button>
+      </span>
+    </div>
+  </article>
+                 <div style="text-align:center;padding:6px 0">
+                   <span class="sm-card__hint">已经到底了 · 共 6 条</span>
+                 </div>
+               </section>
+
+      <nav class="sm-tabbar" aria-label="主导航"><div class="sm-tabbar__inner">
+    <button class="sm-tab" type="button" data-action="nav" data-href="#/discover"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">🔍</span>
+        <span>找局</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/activities"
+        aria-current="page">
+        <span class="sm-tab__icon" aria-hidden="true">📋</span>
+        <span>活动</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/manage"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">🎯</span>
+        <span>我的局</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/me"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">👤</span>
+        <span>我的</span>
+      </button>
+  </div></nav>
+    </main>
+      </div>
+      <!--SCREEN-END:p03-->
+    </section>
+    <section class="screen" id="p04" data-no="P-04" data-title="活动详情（参与者）">
+      <!--SCREEN-START:p04-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    <button class="sm-backbtn" type="button" data-action="back" aria-label="返回">←</button>
+    <div style="min-width:0">
+         <div class="sm-appbar__title">活动详情</div>
+         
+       </div>
+    <span class="sm-spacer"></span>
+    <span class="sm-tag sm-tag--ghost" >林浩</span>
+  </div></header><section class="sm-hero"><div class="sm-hero__inner sm-stack">
+      <div class="sm-row sm-row--wrap">
+        <span class="sm-tag sm-tag--ok" >可报名</span>
+        <span class="sm-tag sm-tag--brand" >篮球</span>
+        <span class="sm-tag " >不限水平</span>
+        <span class="sm-tag sm-tag--ok" >免费</span>
+        
+      </div>
+      <h1 class="sm-hero__title">周三晚篮球 3v3，缺两人</h1>
+      <div class="sm-card__hint">6 小时后开始 · 10-27 周二 22:02 - 10-28 周三 00:02</div>
+    </div></section>
+    <main class="sm-main sm-stack">
+      
+      
+      <section class="sm-card">
+      <div class="sm-facts">
+        <div class="sm-fact"><span class="sm-fact__k">时间</span><span class="sm-fact__v">2026-10-27 22:02 起<br /><span class="sm-card__hint">10-27 周二 22:02 - 10-28 周三 00:02（本地时间）</span></span></div>
+        <div class="sm-fact"><span class="sm-fact__k">地点</span><span class="sm-fact__v">旗山校区 · 风雨操场 3 号场</span></div>
+        <div class="sm-fact"><span class="sm-fact__k">人数</span><span class="sm-fact__v">3/6 人 · 还差 3 人</span></div>
+        <div class="sm-fact"><span class="sm-fact__k">费用</span><span class="sm-fact__v">免费</span></div>
+        <div class="sm-fact"><span class="sm-fact__k">发起人</span><span class="sm-fact__v">王妍 · 信用分 100</span></div>
+        <div class="sm-fact"><span class="sm-fact__k">说明</span><span class="sm-fact__v">风雨操场 3 号场，半场 3v3。新手也欢迎，主要是找搭子。自带水。</span></div>
+      </div>
+      
+    </section>
+      <section class="sm-card">
+      
+      <div class="sm-row" style="margin-top:0;flex-wrap:wrap">
+        <button class="sm-btn sm-btn--primary sm-btn--block" type="button"
+    data-action="open-join" 
+     >立即报名</button>
+      </div>
+      <p class="sm-card__hint" style="margin-top:10px">
+        报名后可以在活动开始前随时取消；距开始 2 小时内取消会扣 5 分。
+      </p>
+    </section>
+      <section class="sm-card">
+      <div class="sm-row sm-row--between">
+        <h3 class="sm-card__title" style="margin:0">参与者（3/6）</h3>
+        
+      </div>
+      <div class="sm-member" data-user="2">
+    <span class="sm-avatar" aria-hidden="true">王</span>
+    <div class="sm-member__body">
+      <div class="sm-member__name">王妍</div>
+      <div class="sm-member__sub">
+        熟练 · 信用分 100
+        
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    <button class="sm-btn sm-btn--sm sm-btn--ghost" type="button"
+                    data-action="view-user" data-id="2">主页</button>
+  </div><div class="sm-member" data-user="3">
+    <span class="sm-avatar" aria-hidden="true">陈</span>
+    <div class="sm-member__body">
+      <div class="sm-member__name">陈默</div>
+      <div class="sm-member__sub">
+        新手 · 信用分 88
+         · 第一次来，多担待
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    <button class="sm-btn sm-btn--sm sm-btn--ghost" type="button"
+                    data-action="view-user" data-id="3">主页</button>
+  </div><div class="sm-member" data-user="5">
+    <span class="sm-avatar" aria-hidden="true">孙</span>
+    <div class="sm-member__body">
+      <div class="sm-member__name">孙琦</div>
+      <div class="sm-member__sub">
+        熟练 · 信用分 74
+         · 带球
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    <button class="sm-btn sm-btn--sm sm-btn--ghost" type="button"
+                    data-action="view-user" data-id="5">主页</button>
+  </div>
+    </section>
+
+      
+
+      
+    </main>
+      </div>
+      <!--SCREEN-END:p04-->
+    </section>
+    <section class="screen" id="p05" data-no="P-05" data-title="活动详情（发起人）">
+      <!--SCREEN-START:p05-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    <button class="sm-backbtn" type="button" data-action="back" aria-label="返回">←</button>
+    <div style="min-width:0">
+         <div class="sm-appbar__title">活动详情</div>
+         
+       </div>
+    <span class="sm-spacer"></span>
+    <span class="sm-tag sm-tag--ghost" >何静</span>
+  </div></header><section class="sm-hero"><div class="sm-hero__inner sm-stack">
+      <div class="sm-row sm-row--wrap">
+        <span class="sm-tag sm-tag--warn" >已满员</span>
+        <span class="sm-tag sm-tag--brand" >羽毛球</span>
+        <span class="sm-tag " >一般</span>
+        <span class="sm-tag sm-tag--ghost" >¥15/人</span>
+        
+      </div>
+      <h1 class="sm-hero__title">羽毛球双打，水平一般即可</h1>
+      <div class="sm-card__hint">2 天后开始 · 10-29 周四 19:02 - 21:02</div>
+    </div></section>
+    <main class="sm-main sm-stack">
+      
+      
+      <section class="sm-card">
+      <div class="sm-facts">
+        <div class="sm-fact"><span class="sm-fact__k">时间</span><span class="sm-fact__v">2026-10-29 19:02 起<br /><span class="sm-card__hint">10-29 周四 19:02 - 21:02（本地时间）</span></span></div>
+        <div class="sm-fact"><span class="sm-fact__k">地点</span><span class="sm-fact__v">旗山校区 · 体育馆 2 号场</span></div>
+        <div class="sm-fact"><span class="sm-fact__k">人数</span><span class="sm-fact__v">4/4 人 · 名额已满</span></div>
+        <div class="sm-fact"><span class="sm-fact__k">费用</span><span class="sm-fact__v">¥15/人</span></div>
+        <div class="sm-fact"><span class="sm-fact__k">发起人</span><span class="sm-fact__v">何静 · 信用分 92</span></div>
+        <div class="sm-fact"><span class="sm-fact__k">说明</span><span class="sm-fact__v">体育馆 2 号场，已有 2 人，再找 2 人凑双打。球拍自带，球我出。</span></div>
+      </div>
+      
+    </section>
+      <section class="sm-card">
+        <h3 class="sm-card__title">你是发起人</h3>
+        <p class="sm-card__hint">签到码念给到场的人，他们自己输入即可签到；活动结束后记录考勤，未勾选的人会被记为爽约。</p>
+        <div class="sm-row" style="margin-top:12px;flex-wrap:wrap">
+          <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="open-attendance" 
+     >记录考勤</button>
+          <button class="sm-btn sm-btn--danger sm-btn--sm" type="button"
+    data-action="open-cancel" 
+     >取消活动</button>
+        </div>
+        
+      </section>
+      <section class="sm-card">
+      <div class="sm-row sm-row--between">
+        <h3 class="sm-card__title" style="margin:0">参与者（4/4）</h3>
+        <span class="sm-card__hint">已签到 0 人</span>
+      </div>
+      <div class="sm-member" data-user="7">
+    <span class="sm-avatar" aria-hidden="true">何</span>
+    <div class="sm-member__body">
+      <div class="sm-member__name">何静</div>
+      <div class="sm-member__sub">
+        一般 · 信用分 92
+        
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    <button class="sm-btn sm-btn--sm sm-btn--ghost" type="button"
+                    data-action="view-user" data-id="7">主页</button>
+  </div><div class="sm-member" data-user="2">
+    <span class="sm-avatar" aria-hidden="true">王</span>
+    <div class="sm-member__body">
+      <div class="sm-member__name">王妍</div>
+      <div class="sm-member__sub">
+        熟练 · 信用分 100
+        
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    <button class="sm-btn sm-btn--sm sm-btn--ghost" type="button"
+                    data-action="view-user" data-id="2">主页</button>
+  </div><div class="sm-member" data-user="6">
+    <span class="sm-avatar" aria-hidden="true">周</span>
+    <div class="sm-member__body">
+      <div class="sm-member__name">周雨</div>
+      <div class="sm-member__sub">
+        新手 · 信用分 100
+        
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    <button class="sm-btn sm-btn--sm sm-btn--ghost" type="button"
+                    data-action="view-user" data-id="6">主页</button>
+  </div><div class="sm-member" data-user="1">
+    <span class="sm-avatar" aria-hidden="true">林</span>
+    <div class="sm-member__body">
+      <div class="sm-member__name">林浩</div>
+      <div class="sm-member__sub">
+        一般 · 信用分 96
+         · 想练练
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    <button class="sm-btn sm-btn--sm sm-btn--ghost" type="button"
+                    data-action="view-user" data-id="1">主页</button>
+  </div>
+    </section>
+
+      <section class="sm-card sm-card--brand">
+               <h3 class="sm-card__title">签到码</h3>
+               <div class="sm-code"><span class="sm-code__cell">6</span><span class="sm-code__cell">0</span><span class="sm-code__cell">8</span><span class="sm-code__cell">8</span></div>
+               <p class="sm-card__hint" style="margin-top:8px">
+                 把这 4 位数字念给到场的人。签到码只有你能看到。
+               </p>
+             </section>
+
+      
+    </main>
+      </div>
+      <!--SCREEN-END:p05-->
+    </section>
+    <section class="screen" id="p06" data-no="P-06" data-title="发起活动">
+      <!--SCREEN-START:p06-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    <button class="sm-backbtn" type="button" data-action="back" aria-label="返回">←</button>
+    <div style="min-width:0">
+         <div class="sm-appbar__title">发起活动</div>
+         
+       </div>
+    <span class="sm-spacer"></span>
+    
+  </div></header><main class="sm-main">
+      
+      
+
+      <form data-action="submit" class="sm-stack">
+        <section class="sm-card">
+          <h3 class="sm-card__title">这场局是什么</h3>
+          <label class="sm-field">
+    <span class="sm-label">标题</span>
+    <input class="sm-input" name="title" type="text" value=""
+     placeholder="例如：周三晚篮球 3v3，缺两人" maxlength="60" />
+    
+  </label>
+          <label class="sm-field">
+    <span class="sm-label">运动项目</span>
+    <select class="sm-select" name="sport"><option value="篮球" selected>🏀 篮球</option><option value="足球" >⚽ 足球</option><option value="羽毛球" >🏸 羽毛球</option><option value="乒乓球" >🏓 乒乓球</option><option value="网球" >🎾 网球</option><option value="排球" >🏐 排球</option><option value="跑步" >🏃 跑步</option><option value="游泳" >🏊 游泳</option><option value="健身" >🏋️ 健身</option><option value="骑行" >🚴 骑行</option></select>
+    
+  </label>
+          <div class="sm-field">
+            <span class="sm-label">水平要求</span>
+            <div class="sm-switch" role="group" data-switch="skill_level"><button type="button" data-action="switch" data-name="skill_level" data-value="any"
+           aria-pressed="false">不限水平</button><button type="button" data-action="switch" data-name="skill_level" data-value="beginner"
+           aria-pressed="true">新手</button><button type="button" data-action="switch" data-name="skill_level" data-value="intermediate"
+           aria-pressed="false">一般</button><button type="button" data-action="switch" data-name="skill_level" data-value="advanced"
+           aria-pressed="false">熟练</button></div>
+          </div>
+        </section>
+
+        <section class="sm-card">
+          <h3 class="sm-card__title">什么时候 · 在哪里</h3>
+          <div class="sm-grid2">
+            <label class="sm-field">
+    <span class="sm-label">开始时间</span>
+    <input class="sm-input" name="start_time" type="datetime-local" value="2026-10-27T18:00"
+     placeholder=""  />
+    
+  </label>
+            <label class="sm-field">
+    <span class="sm-label">结束时间</span>
+    <input class="sm-input" name="end_time" type="datetime-local" value="2026-10-27T20:00"
+     placeholder=""  />
+    
+  </label>
+          </div>
+          <div class="sm-row" style="margin-top:8px;flex-wrap:wrap">
+            <button class="sm-btn sm-btn--ghost sm-btn--sm" type="button"
+    data-action="dur" 
+     data-min="60">1 小时</button><button class="sm-btn sm-btn--ghost sm-btn--sm" type="button"
+    data-action="dur" 
+     data-min="90">1.5 小时</button><button class="sm-btn sm-btn--ghost sm-btn--sm" type="button"
+    data-action="dur" 
+     data-min="120">2 小时</button><button class="sm-btn sm-btn--ghost sm-btn--sm" type="button"
+    data-action="dur" 
+     data-min="180">3 小时</button>
+            <span class="sm-card__hint">当前时长 2 小时</span>
+          </div>
+          <div class="sm-grid2" style="margin-top:12px">
+            <label class="sm-field">
+    <span class="sm-label">校区</span>
+    <select class="sm-select" name="campus"><option value="旗山校区" selected>旗山校区</option><option value="铜盘校区" >铜盘校区</option><option value="怡山校区" >怡山校区</option><option value="晋江校区" >晋江校区</option><option value="厦门工艺美院" >厦门工艺美院</option></select>
+    
+  </label>
+            <label class="sm-field">
+    <span class="sm-label">具体地点</span>
+    <input class="sm-input" name="location" type="text" value=""
+     placeholder="风雨操场 3 号场" maxlength="60" />
+    
+  </label>
+          </div>
+          <div class="sm-row" style="margin-top:10px;flex-wrap:wrap">
+            <button class="sm-btn sm-btn--sm" type="button"
+    data-action="geo" 
+     >📍 用当前位置标记场地</button>
+            <span class="sm-card__hint">不标记也可以，同学用签到码签到</span>
+          </div>
+        </section>
+
+        <section class="sm-card">
+          <h3 class="sm-card__title">人数 · 费用</h3>
+          <div class="sm-grid2">
+            <label class="sm-field">
+    <span class="sm-label">人数上限</span>
+    <input class="sm-input" name="capacity" type="number" value="6"
+     placeholder="" min="2" max="100" step="1" inputmode="numeric" />
+    <span class="sm-card__hint" style="display:block;margin-top:5px">含你自己，2~100 人</span>
+  </label>
+            <label class="sm-field">
+    <span class="sm-label">人均费用（元）</span>
+    <input class="sm-input" name="fee" type="number" value="0"
+     placeholder="" min="0" step="0.5" inputmode="decimal" />
+    <span class="sm-card__hint" style="display:block;margin-top:5px">免费填 0；场地费 AA 就写摊到每人的金额</span>
+  </label>
+          </div>
+          <div class="sm-field">
+            <span class="sm-label">性别限制</span>
+            <div class="sm-switch" role="group" data-switch="gender_limit"><button type="button" data-action="switch" data-name="gender_limit" data-value="any"
+           aria-pressed="true">不限</button><button type="button" data-action="switch" data-name="gender_limit" data-value="female"
+           aria-pressed="false">限女生</button><button type="button" data-action="switch" data-name="gender_limit" data-value="male"
+           aria-pressed="false">限男生</button></div>
+          </div>
+        </section>
+
+        <section class="sm-card">
+          <h3 class="sm-card__title">补充说明</h3>
+          <label class="sm-field">
+    <span class="sm-label">说明 <span class="sm-label__opt">（可选）</span></span>
+    <textarea class="sm-textarea" name="description" rows="4" placeholder="缺几人、水平要求、要带什么、注意事项…"></textarea>
+    
+  </label>
+        </section>
+
+        <section class="sm-card sm-card--flat">
+          <p class="sm-card__hint">
+            发布后会自动生成 4 位签到码（只有你能看到）；活动结束后记得记录考勤，
+            未勾选到场的人会被记为爽约并扣分。
+          </p>
+        </section>
+
+        <button class="sm-btn sm-btn--primary sm-btn--block sm-btn--lg" type="submit" >
+          发布活动
+        </button>
+      </form>
+    </main>
+      </div>
+      <!--SCREEN-END:p06-->
+    </section>
+    <section class="screen" id="p07" data-no="P-07" data-title="签到">
+      <!--SCREEN-START:p07-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    <button class="sm-backbtn" type="button" data-action="back" aria-label="返回">←</button>
+    <div style="min-width:0">
+         <div class="sm-appbar__title">签到</div>
+         
+       </div>
+    <span class="sm-spacer"></span>
+    
+  </div></header><main class="sm-main sm-stack">
+      <section class="sm-card">
+        <div class="sm-row sm-row--between">
+          <h2 style="font-size:16.5px;font-weight:680">周三晚篮球 3v3，缺两人</h2>
+          <span class="sm-tag " >不限水平</span>
+        </div>
+        <p class="sm-card__hint" style="margin-top:4px">
+          10-27 周二 22:02 - 10-28 周三 00:02 · 旗山校区 风雨操场 3 号场
+        </p>
+        <div style="margin-top:12px"><div class="sm-alert sm-alert--warn" role="status">
+    <span class="sm-alert__icon" aria-hidden="true">⏳</span>
+    <span>你还没有报名这场活动。请先报名再来签到。</span>
+  </div></div>
+      </section>
+
+      
+
+      <form data-action="code" class="sm-card">
+        <h3 class="sm-card__title">方式一 · 输入签到码</h3>
+        <p class="sm-card__hint">找发起人要 4 位数字，输入即可。</p>
+        <input class="sm-input" name="code" inputmode="numeric" maxlength="4"
+          autocomplete="one-time-code" placeholder="••••"
+          value=""
+          style="margin-top:12px;text-align:center;font-family:var(--font-num);font-size:26px;letter-spacing:10px" />
+        <button class="sm-btn sm-btn--primary sm-btn--block sm-btn--lg" type="submit" style="margin-top:12px"
+          disabled>
+          确认签到
+        </button>
+      </form>
+
+      <section class="sm-card">
+        <h3 class="sm-card__title">方式二 · 定位签到</h3>
+        <p class="sm-card__hint">
+          需要你在活动地点 300 米以内。超出范围后端会返回具体距离，
+          直接按提示挪近一点再试。浏览器定位要求 HTTPS 或 localhost。
+        </p>
+        <button class="sm-btn sm-btn--block" type="button" data-action="location" style="margin-top:12px"
+          disabled>
+          📍 用当前位置签到
+        </button>
+      </section>
+
+      <section class="sm-card sm-card--flat">
+        <p class="sm-card__hint">
+          签到成功后状态会变成「已签到」。若长时间无法签到，先把情况告诉发起人，
+          避免被记为爽约（会扣 15 分信用分）。
+        </p>
+      </section>
+    </main>
+      </div>
+      <!--SCREEN-END:p07-->
+    </section>
+    <section class="screen" id="p08" data-no="P-08" data-title="管理活动">
+      <!--SCREEN-START:p08-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    <button class="sm-backbtn" type="button" data-action="back" aria-label="返回">←</button>
+    <div style="min-width:0">
+         <div class="sm-appbar__title">管理活动</div>
+         
+       </div>
+    <span class="sm-spacer"></span>
+    
+  </div></header><main class="sm-main sm-stack">
+      
+      
+
+      <section class="sm-card">
+        <div class="sm-row sm-row--wrap" style="margin-bottom:6px">
+          <span class="sm-tag sm-tag--warn" >已满员</span>
+          <span class="sm-tag sm-tag--brand" >羽毛球</span>
+          <span class="sm-tag " >一般</span>
+        </div>
+        <h2 style="font-size:17px;font-weight:680;letter-spacing:-0.01em">羽毛球双打，水平一般即可</h2>
+        <p class="sm-card__hint" style="margin-top:4px">
+          10-29 周四 19:02 - 21:02 · 旗山校区 体育馆 2 号场 ·
+          2 天后
+        </p>
+        <div class="sm-row" style="margin-top:12px;flex-wrap:wrap">
+          <button class="sm-btn sm-btn--sm" type="button"
+    data-action="go-detail" 
+     >查看详情页</button>
+          <button class="sm-btn sm-btn--sm" type="button"
+    data-action="go-edit" 
+     >编辑活动</button>
+          <button class="sm-btn sm-btn--danger sm-btn--sm" type="button"
+    data-action="cancel" 
+     >取消活动</button>
+        </div>
+      </section>
+
+      <section class="sm-card sm-card--brand">
+        <h3 class="sm-card__title">签到码</h3>
+        <div class="sm-code"><span class="sm-code__cell">6</span><span class="sm-code__cell">0</span><span class="sm-code__cell">8</span><span class="sm-code__cell">8</span></div>
+        <p class="sm-card__hint" style="margin-top:8px">
+          念给到场的人，他们自己在手机上输入即可签到。定位签到需要你在发布时标记过场地坐标。
+        </p>
+      </section>
+
+      <section class="sm-card">
+        <div class="sm-row sm-row--between">
+          <h3 class="sm-card__title" style="margin:0">到场情况</h3>
+          <span class="sm-card__hint">已签到 0 · 待签到 4</span>
+        </div>
+
+        <div style="margin-top:6px">
+                 <div class="sm-member" data-user="7">
+    <input type="checkbox" name="attended" value="7" 
+             style="width:18px;height:18px;accent-color:var(--brand)" aria-label="标记 何静 到场" />
+    <div class="sm-member__body">
+      <div class="sm-member__name">何静</div>
+      <div class="sm-member__sub">
+        一般 · 信用分 92
+        
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    
+  </div><div class="sm-member" data-user="2">
+    <input type="checkbox" name="attended" value="2" 
+             style="width:18px;height:18px;accent-color:var(--brand)" aria-label="标记 王妍 到场" />
+    <div class="sm-member__body">
+      <div class="sm-member__name">王妍</div>
+      <div class="sm-member__sub">
+        熟练 · 信用分 100
+        
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    
+  </div><div class="sm-member" data-user="6">
+    <input type="checkbox" name="attended" value="6" 
+             style="width:18px;height:18px;accent-color:var(--brand)" aria-label="标记 周雨 到场" />
+    <div class="sm-member__body">
+      <div class="sm-member__name">周雨</div>
+      <div class="sm-member__sub">
+        新手 · 信用分 100
+        
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    
+  </div><div class="sm-member" data-user="1">
+    <input type="checkbox" name="attended" value="1" 
+             style="width:18px;height:18px;accent-color:var(--brand)" aria-label="标记 林浩 到场" />
+    <div class="sm-member__body">
+      <div class="sm-member__name">林浩</div>
+      <div class="sm-member__sub">
+        一般 · 信用分 96
+         · 想练练
+      </div>
+    </div>
+    <span class="sm-tag sm-tag--ghost" >已报名</span>
+    
+  </div>
+               </div>
+
+        <div class="sm-row" style="margin-top:14px;flex-wrap:wrap">
+                 <button class="sm-btn sm-btn--sm sm-btn--ghost" type="button" data-action="check-all">全选到场</button>
+                 <button class="sm-btn sm-btn--sm sm-btn--ghost" type="button" data-action="check-none">全不选</button>
+                 <span class="sm-spacer"></span>
+                 <button class="sm-btn sm-btn--primary" type="button" data-action="attendance" >
+                   确认考勤（0 人到场）
+                 </button>
+               </div>
+               <p class="sm-card__hint" style="margin-top:8px">
+                 未勾选的人会被记为爽约并扣 15 分信用分。
+               </p>
+      </section>
+
+      <section class="sm-card sm-card--flat">
+        <h3 class="sm-card__title">小提示</h3>
+        <ul class="sm-card__hint" style="line-height:1.9;padding-left:2px">
+          <li>· 报名人数达到上限后活动状态会自动变成「已满员」。</li>
+          <li>· 距开始 2 小时内取消报名的同学会被扣 5 分，界面已提示。</li>
+          <li>· 活动结束后，被确认到场的同学可以互相评价。</li>
+        </ul>
+      </section>
+    </main>
+      </div>
+      <!--SCREEN-END:p08-->
+    </section>
+    <section class="screen" id="p09" data-no="P-09" data-title="我的局">
+      <!--SCREEN-START:p09-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    
+    <div style="min-width:0">
+         <div class="sm-appbar__title">我的局</div>
+         <div class="sm-appbar__sub">我发起 1 · 我报名 5</div>
+       </div>
+    <span class="sm-spacer"></span>
+    <button class="sm-btn sm-btn--sm" type="button"
+    data-action="go-new" 
+     >＋ 发起</button>
+  </div></header><main class="sm-main sm-stack">
+      <div class="sm-switch" style="width:100%" role="group" aria-label="切换列表">
+        <button type="button" style="flex:1" data-action="tab" data-value="organized"
+          aria-pressed="true">我发起的（1）</button>
+        <button type="button" style="flex:1" data-action="tab" data-value="joined"
+          aria-pressed="false">我报名的（5）</button>
+      </div>
+
+      
+      
+
+      <section class="sm-stack"><article class="sm-card" style="padding:14px">
+      <div class="sm-row" style="align-items:flex-start;gap:12px">
+        <span class="sm-act__sport" aria-hidden="true" style="width:38px;height:38px;font-size:19px">🏀</span>
+        <div style="flex:1;min-width:0" role="button" tabindex="0" data-action="open-activity" data-id="107">
+          <div style="font-size:15px;font-weight:640;line-height:1.35">昨天那场篮球（已结束，用于评价演示）</div>
+          <div class="sm-act__meta">
+            <span>10-26 周一 14:02</span>
+            <span>·</span>
+            <span>旗山校区 风雨操场 1 号场</span>
+          </div>
+        </div>
+      </div>
+      <div class="sm-act__tags">
+        <span class="sm-tag " >已结束</span>
+        <span class="sm-tag sm-tag--ghost" >4/6 人</span>
+        <span class="sm-tag " >不限水平</span>
+      </div>
+      <div class="sm-row" style="margin-top:12px;flex-wrap:wrap">
+        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
+    data-action="go-manage" 
+     data-id="107">记录考勤</button>
+        <button class="sm-btn sm-btn--sm" type="button"
+    data-action="open-activity" 
+     data-id="107">详情</button>
+        <button class="sm-btn sm-btn--danger sm-btn--sm" type="button"
+    data-action="ask-cancel" 
+     data-id="107">取消活动</button>
+      </div>
+    </article></section>
+
+      <nav class="sm-tabbar" aria-label="主导航"><div class="sm-tabbar__inner">
+    <button class="sm-tab" type="button" data-action="nav" data-href="#/discover"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">🔍</span>
+        <span>找局</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/activities"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">📋</span>
+        <span>活动</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/manage"
+        aria-current="page">
+        <span class="sm-tab__icon" aria-hidden="true">🎯</span>
+        <span>我的局</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/me"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">👤</span>
+        <span>我的</span>
+      </button>
+  </div></nav>
+    </main>
+      </div>
+      <!--SCREEN-END:p09-->
+    </section>
+    <section class="screen" id="p10" data-no="P-10" data-title="我的">
+      <!--SCREEN-START:p10-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    
+    <div style="min-width:0">
+         <div class="sm-appbar__title">我的</div>
+         <div class="sm-appbar__sub">旗山校区 · GMT+8</div>
+       </div>
+    <span class="sm-spacer"></span>
+    <button class="sm-btn sm-btn--ghost sm-btn--sm" type="button"
+    data-action="toggle-edit" 
+     >编辑</button>
+  </div></header><main class="sm-main sm-stack">
+      
+      
+
+      <section class="sm-card">
+        <div class="sm-row" style="gap:14px">
+          <span class="sm-avatar sm-avatar--lg" aria-hidden="true">林</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:18px;font-weight:700;letter-spacing:-0.01em">林浩</div>
+            <div class="sm-card__hint">@linhao · 旗山校区</div>
+            <div class="sm-act__tags" style="margin-top:8px">
+              <span class="sm-tag sm-tag--brand" >一般</span>
+              <span class="sm-tag " >篮球</span><span class="sm-tag " >跑步</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sm-card sm-credit">
+    <div class="sm-credit__ring" role="img" aria-label="信用分 96 分">
+      <svg width="78" height="78" viewBox="0 0 78 78" style="position:absolute;inset:0">
+        <circle cx="39" cy="39" r="32" fill="none" stroke="var(--surface-2)" stroke-width="7"></circle>
+        <circle cx="39" cy="39" r="32" fill="none" stroke="var(--accent)" stroke-width="7"
+          stroke-linecap="round" stroke-dasharray="193.01945263655688 201.06192982974676" transform="rotate(-90 39 39)"></circle>
+      </svg>
+      <span>
+        <span class="sm-credit__num" style="color:var(--accent)">96</span>
+        <span class="sm-credit__unit">信用分</span>
+      </span>
+    </div>
+    <div class="sm-credit__stats">
+      <div class="sm-stat"><div class="sm-stat__num">23</div><div class="sm-stat__label">完成次数</div></div>
+      <div class="sm-stat"><div class="sm-stat__num" style="color:inherit">0</div><div class="sm-stat__label">爽约次数</div></div>
+      <div class="sm-stat"><div class="sm-stat__num">4.8</div><div class="sm-stat__label">评价均分</div></div>
+    </div>
+  </section>
+  
+
+      <section class="sm-list">
+        <div class="sm-list__item" role="button" tabindex="0" data-action="go-manage">
+          <span class="sm-list__icon">🎯</span>
+          <span class="sm-list__body">
+            <span class="sm-list__title">我的局</span>
+            <span class="sm-list__desc">我发起 1 · 我报名 5</span>
+          </span>
+          <span class="sm-list__chev">›</span>
+        </div>
+        <div class="sm-list__item" role="button" tabindex="0" data-action="go-my-page">
+          <span class="sm-list__icon">👤</span>
+          <span class="sm-list__body">
+            <span class="sm-list__title">我的主页（别人看到的样子）</span>
+            <span class="sm-list__desc">信用分、评价与印象标签</span>
+          </span>
+          <span class="sm-list__chev">›</span>
+        </div>
+        <div class="sm-list__item" role="button" tabindex="0" data-action="go-discover">
+          <span class="sm-list__icon">🔍</span>
+          <span class="sm-list__body">
+            <span class="sm-list__title">去找局</span>
+            <span class="sm-list__desc">一句话匹配适合你的活动</span>
+          </span>
+          <span class="sm-list__chev">›</span>
+        </div>
+        <div class="sm-list__item" role="button" tabindex="0" data-action="go-new">
+          <span class="sm-list__icon">➕</span>
+          <span class="sm-list__body">
+            <span class="sm-list__title">发起活动</span>
+            <span class="sm-list__desc">发布后会生成只有你能看到的签到码</span>
+          </span>
+          <span class="sm-list__chev">›</span>
+        </div>
+      </section>
+
+      <section class="sm-card">
+        <div class="sm-row sm-row--between">
+          <h3 class="sm-card__title" style="margin:0">我收到的评价（4）</h3>
+          <span class="sm-score">4.8 分</span>
+        </div>
+        <div style="padding:12px 0;border-top:1px solid var(--line)">
+                    <div class="sm-row sm-row--between">
+                      <b style="font-size:13.5px">孙琦</b>
+                      <span style="color:#ffb020;letter-spacing:2px">★★★★<span style="color:#d9dde7">★</span></span>
+                    </div>
+                    <div class="sm-act__tags" style="margin-top:6px"><span class="sm-tag sm-tag--ok" >水平匹配</span></div>
+                    <p style="margin-top:6px;font-size:13px">打得不错，下次再来。</p>
+                  </div><div style="padding:12px 0;border-top:1px solid var(--line)">
+                    <div class="sm-row sm-row--between">
+                      <b style="font-size:13.5px">陈默</b>
+                      <span style="color:#ffb020;letter-spacing:2px">★★★★★<span style="color:#d9dde7"></span></span>
+                    </div>
+                    <div class="sm-act__tags" style="margin-top:6px"><span class="sm-tag sm-tag--ok" >准时</span><span class="sm-tag sm-tag--ok" >组织得力</span></div>
+                    <p style="margin-top:6px;font-size:13px">组织得挺好，场地和时间都提前说清楚了。</p>
+                  </div><div style="padding:12px 0;border-top:1px solid var(--line)">
+                    <div class="sm-row sm-row--between">
+                      <b style="font-size:13.5px">赵琳</b>
+                      <span style="color:#ffb020;letter-spacing:2px">★★★★★<span style="color:#d9dde7"></span></span>
+                    </div>
+                    <div class="sm-act__tags" style="margin-top:6px"><span class="sm-tag sm-tag--ok" >准时</span></div>
+                    <p style="margin-top:6px;font-size:13px">很准时。</p>
+                  </div><div style="margin-top:10px"><button class="sm-btn sm-btn--ghost sm-btn--block sm-btn--sm" type="button"
+    data-action="go-my-page" 
+     >看全部评价</button></div>
+      </section>
+
+      <section class="sm-card sm-card--flat">
+        <h3 class="sm-card__title">账号与运行环境</h3>
+        <div class="sm-list" style="border:0">
+          <div class="sm-list__item" style="cursor:default;padding-left:0;padding-right:0">
+            <span class="sm-list__icon">🕒</span>
+            <span class="sm-list__body">
+              <span class="sm-list__title">时间显示</span>
+              <span class="sm-list__desc">本地时间 GMT+8（后端返回 UTC，已自动换算）</span>
+            </span>
+          </div>
+          <div class="sm-list__item" style="cursor:default;padding-left:0;padding-right:0">
+            <span class="sm-list__icon">🧪</span>
+            <span class="sm-list__body">
+              <span class="sm-list__title">离线演示数据</span>
+              <span class="sm-list__desc">http://127.0.0.1:8000</span>
+            </span>
+          </div>
+          <div class="sm-list__item" style="cursor:default;padding-left:0;padding-right:0">
+            <span class="sm-list__icon">📅</span>
+            <span class="sm-list__body">
+              <span class="sm-list__title">注册时间</span>
+              <span class="sm-list__desc">2026-06-29 16:02</span>
+            </span>
+          </div>
+        </div>
+        <p class="sm-card__hint" style="margin-top:10px">
+          信用分低于 60 分无法报名新活动；距开始 2 小时内取消报名扣 5 分；爽约扣 15 分。
+        </p>
+      </section>
+
+      <button class="sm-btn sm-btn--danger sm-btn--block" type="button" data-action="logout"
+        >退出登录</button>
+
+      <nav class="sm-tabbar" aria-label="主导航"><div class="sm-tabbar__inner">
+    <button class="sm-tab" type="button" data-action="nav" data-href="#/discover"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">🔍</span>
+        <span>找局</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/activities"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">📋</span>
+        <span>活动</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/manage"
+        >
+        <span class="sm-tab__icon" aria-hidden="true">🎯</span>
+        <span>我的局</span>
+      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/me"
+        aria-current="page">
+        <span class="sm-tab__icon" aria-hidden="true">👤</span>
+        <span>我的</span>
+      </button>
+  </div></nav>
+    </main>
+      </div>
+      <!--SCREEN-END:p10-->
+    </section>
+    <section class="screen" id="p11" data-no="P-11" data-title="个人主页（他人）">
+      <!--SCREEN-START:p11-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    <button class="sm-backbtn" type="button" data-action="back" aria-label="返回">←</button>
+    <div style="min-width:0">
+         <div class="sm-appbar__title">陈默</div>
+         
+       </div>
+    <span class="sm-spacer"></span>
+    
+  </div></header><main class="sm-main sm-stack">
+      <section class="sm-card">
+        <div class="sm-row" style="gap:14px">
+          <span class="sm-avatar sm-avatar--lg" aria-hidden="true">陈</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:18px;font-weight:700;letter-spacing:-0.01em">陈默</div>
+            <div class="sm-card__hint">旗山校区 · 新手</div>
+            <div class="sm-act__tags" style="margin-top:8px">
+              <span class="sm-tag sm-tag--brand" >篮球</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sm-divider"></div>
+
+        <div class="sm-credit__stats">
+          <div class="sm-stat">
+            <div class="sm-stat__num" style="color:var(--accent)">88</div>
+            <div class="sm-stat__label">信用分</div>
+          </div>
+          <div class="sm-stat"><div class="sm-stat__num">9</div><div class="sm-stat__label">完成次数</div></div>
+          <div class="sm-stat"><div class="sm-stat__num">1</div><div class="sm-stat__label">爽约次数</div></div>
+        </div>
+
+        
+
+        
+      </section>
+
+      <section class="sm-card">
+        <div class="sm-row sm-row--between">
+          <h3 class="sm-card__title" style="margin:0">收到的评价（1）</h3>
+          <span class="sm-score">4.5 分</span>
+        </div>
+        <div class="sm-bars"><div class="sm-bar">
+          <span>5 星</span>
+          <span class="sm-bar__track"><span class="sm-bar__fill" style="width:0%"></span></span>
+          <span class="sm-bar__num">0</span>
+        </div><div class="sm-bar">
+          <span>4 星</span>
+          <span class="sm-bar__track"><span class="sm-bar__fill" style="width:100%"></span></span>
+          <span class="sm-bar__num">1</span>
+        </div><div class="sm-bar">
+          <span>3 星</span>
+          <span class="sm-bar__track"><span class="sm-bar__fill" style="width:0%"></span></span>
+          <span class="sm-bar__num">0</span>
+        </div><div class="sm-bar">
+          <span>2 星</span>
+          <span class="sm-bar__track"><span class="sm-bar__fill" style="width:0%"></span></span>
+          <span class="sm-bar__num">0</span>
+        </div><div class="sm-bar">
+          <span>1 星</span>
+          <span class="sm-bar__track"><span class="sm-bar__fill" style="width:0%"></span></span>
+          <span class="sm-bar__num">0</span>
+        </div></div>
+        <div class="sm-act__tags" style="margin-top:12px">
+                 <span class="sm-tag sm-tag--ok" >氛围好 ×1</span>
+               </div>
+      </section>
+
+      <section class="sm-stack">
+               <article class="sm-card">
+                     <div class="sm-row sm-row--between">
+                       <span class="sm-row" style="gap:8px">
+                         <span class="sm-avatar" aria-hidden="true">王</span>
+                         <b style="font-size:14px">王妍</b>
+                       </span>
+                       <span style="color:#ffb020;letter-spacing:2px">★★★★<span style="color:#d9dde7">★</span></span>
+                     </div>
+                     <div class="sm-act__tags" style="margin-top:8px"><span class="sm-tag sm-tag--ok" >氛围好</span></div>
+                     <p style="margin-top:8px;font-size:13.5px">新手也挺积极。</p>
+                     <p class="sm-card__hint" style="margin-top:8px">2026-10-22 16:02</p>
+                   </article>
+             </section>
+    </main>
+      </div>
+      <!--SCREEN-END:p11-->
+    </section>
+    <section class="screen" id="p12" data-no="P-12" data-title="评价同场伙伴">
+      <!--SCREEN-START:p12-->
+      <div class="screen__inner">
+<header class="sm-appbar"><div class="sm-appbar__inner">
+    <button class="sm-backbtn" type="button" data-action="back" aria-label="返回">←</button>
+    <div style="min-width:0">
+         <div class="sm-appbar__title">评价同场伙伴</div>
+         
+       </div>
+    <span class="sm-spacer"></span>
+    
+  </div></header><main class="sm-main sm-stack">
+      <section class="sm-card">
+        <h2 style="font-size:16.5px;font-weight:680">昨天那场篮球（已结束，用于评价演示）</h2>
+        <p class="sm-card__hint" style="margin-top:4px">
+          旗山校区 · 风雨操场 1 号场 · 2026-10-26 14:02
+        </p>
+        <div class="sm-divider"></div>
+        <p class="sm-card__hint">
+          我的到场状态：已确认到场 ✅
+        </p>
+      </section>
+
+      
+      
+
+      <section class="sm-card">
+      <div class="sm-row" style="margin-bottom:10px">
+        <span class="sm-avatar sm-avatar--lg" aria-hidden="true">陈</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:650">陈默</div>
+          <div class="sm-card__hint">
+            新手 · 信用分 88
+            
+          </div>
+        </div>
+        
+      </div>
+
+      <form data-action="submit" data-user="3">
+               <span class="sm-label">这次一起玩的体验</span>
+               <div class="sm-stars" role="radiogroup" aria-label="评分"><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="3" data-score="1"
+          aria-label="1 分">★</button><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="3" data-score="2"
+          aria-label="2 分">★</button><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="3" data-score="3"
+          aria-label="3 分">★</button><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="3" data-score="4"
+          aria-label="4 分">★</button><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="3" data-score="5"
+          aria-label="5 分">★</button><span class="sm-card__hint" style="align-self:center;margin-left:6px">5 分</span></div>
+               <span class="sm-label" style="margin-top:14px">印象标签 <span class="sm-label__opt">（可多选）</span></span>
+               <div class="sm-row sm-row--wrap" style="gap:8px">
+                 <button type="button" class="sm-chip"
+                     data-action="tag" data-user="3" data-value="准时"
+                     aria-pressed="true">准时</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="3" data-value="球风好"
+                     aria-pressed="true">球风好</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="3" data-value="水平匹配"
+                     aria-pressed="false">水平匹配</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="3" data-value="氛围好"
+                     aria-pressed="false">氛围好</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="3" data-value="组织得力"
+                     aria-pressed="false">组织得力</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="3" data-value="乐于配合"
+                     aria-pressed="false">乐于配合</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="3" data-value="下次还想一起"
+                     aria-pressed="false">下次还想一起</button>
+               </div>
+               <label class="sm-field" style="margin-top:14px">
+                 <span class="sm-label">补充一句 <span class="sm-label__opt">（可选）</span></span>
+                 <textarea class="sm-textarea" name="comment" rows="2" maxlength="200"
+                   placeholder="例如：很准时，配合也好。"></textarea>
+               </label>
+               <button class="sm-btn sm-btn--primary sm-btn--block" type="submit" style="margin-top:12px"
+                 >提交评价</button>
+             </form>
+    </section><section class="sm-card">
+      <div class="sm-row" style="margin-bottom:10px">
+        <span class="sm-avatar sm-avatar--lg" aria-hidden="true">高</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:650">高飞</div>
+          <div class="sm-card__hint">
+            熟练 · 信用分 58
+            
+          </div>
+        </div>
+        
+      </div>
+
+      <form data-action="submit" data-user="8">
+               <span class="sm-label">这次一起玩的体验</span>
+               <div class="sm-stars" role="radiogroup" aria-label="评分"><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="8" data-score="1"
+          aria-label="1 分">★</button><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="8" data-score="2"
+          aria-label="2 分">★</button><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="8" data-score="3"
+          aria-label="3 分">★</button><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="8" data-score="4"
+          aria-label="4 分">★</button><button class="sm-star" type="button" role="radio" aria-checked="true"
+          data-action="star" data-user="8" data-score="5"
+          aria-label="5 分">★</button><span class="sm-card__hint" style="align-self:center;margin-left:6px">5 分</span></div>
+               <span class="sm-label" style="margin-top:14px">印象标签 <span class="sm-label__opt">（可多选）</span></span>
+               <div class="sm-row sm-row--wrap" style="gap:8px">
+                 <button type="button" class="sm-chip"
+                     data-action="tag" data-user="8" data-value="准时"
+                     aria-pressed="false">准时</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="8" data-value="球风好"
+                     aria-pressed="false">球风好</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="8" data-value="水平匹配"
+                     aria-pressed="false">水平匹配</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="8" data-value="氛围好"
+                     aria-pressed="false">氛围好</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="8" data-value="组织得力"
+                     aria-pressed="false">组织得力</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="8" data-value="乐于配合"
+                     aria-pressed="false">乐于配合</button><button type="button" class="sm-chip"
+                     data-action="tag" data-user="8" data-value="下次还想一起"
+                     aria-pressed="false">下次还想一起</button>
+               </div>
+               <label class="sm-field" style="margin-top:14px">
+                 <span class="sm-label">补充一句 <span class="sm-label__opt">（可选）</span></span>
+                 <textarea class="sm-textarea" name="comment" rows="2" maxlength="200"
+                   placeholder="例如：很准时，配合也好。"></textarea>
+               </label>
+               <button class="sm-btn sm-btn--primary sm-btn--block" type="submit" style="margin-top:12px"
+                 >提交评价</button>
+             </form>
+    </section>
+
+      <section class="sm-card sm-card--flat">
+               <h3 class="sm-card__title">本次不可评价</h3>
+               <div class="sm-row sm-row--between" style="padding:6px 0">
+                        <span>孙琦</span>
+                        <span class="sm-tag sm-tag--danger">爽约</span>
+                      </div>
+               <p class="sm-card__hint" style="margin-top:6px">评价只对"被确认到场"的人开放。</p>
+             </section>
+    </main>
+      </div>
+      <!--SCREEN-END:p12-->
+    </section>
+
+<!-- 屏幕跳转菜单 -->
+<div class="jump-menu" id="jumpMenu">
+  <div class="jump-menu__panel">
+    <div class="jump-menu__head">
+      <h2>选择要查看的画面（共 12 屏）</h2>
+      <span class="proto-chrome__spacer"></span>
+      <button type="button" id="btnJumpClose">关闭</button>
+    </div>
+    <div class="jump-menu__grid">
+      <button class="jump" type="button" data-goto="p01"><b>01</b><span>登录 / 注册</span></button>
+          <button class="jump" type="button" data-goto="p02"><b>02</b><span>找局首页</span></button>
+          <button class="jump" type="button" data-goto="p03"><b>03</b><span>活动列表</span></button>
+          <button class="jump" type="button" data-goto="p04"><b>04</b><span>活动详情（参与者）</span></button>
+          <button class="jump" type="button" data-goto="p05"><b>05</b><span>活动详情（发起人）</span></button>
+          <button class="jump" type="button" data-goto="p06"><b>06</b><span>发起活动</span></button>
+          <button class="jump" type="button" data-goto="p07"><b>07</b><span>签到</span></button>
+          <button class="jump" type="button" data-goto="p08"><b>08</b><span>管理活动</span></button>
+          <button class="jump" type="button" data-goto="p09"><b>09</b><span>我的局</span></button>
+          <button class="jump" type="button" data-goto="p10"><b>10</b><span>我的</span></button>
+          <button class="jump" type="button" data-goto="p11"><b>11</b><span>个人主页（他人）</span></button>
+          <button class="jump" type="button" data-goto="p12"><b>12</b><span>评价同场伙伴</span></button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="proto-toast" id="toast"></div>
+
+<script>
+/* ===========================================================================
+   原型运行时（纯原生 JS，无模块、无外部依赖，file:// 直接可用）
+   ---------------------------------------------------------------------------
+   三件事：
+     1. hash 路由：一次只显示一屏，#p04 这样的地址可以直接分享/刷新
+     2. 把按钮动作翻译成"跳转到第 N 屏"（映射见 ROUTE / HREF_ROUTE）
+     3. 分段开关、筛选 chip、复选框等做本地视觉反馈，让原型"点得动"
+   =========================================================================== */
+(function () {
+  var SCREENS = [
+  {
+    "id": "p01",
+    "no": "P-01",
+    "title": "登录 / 注册",
+    "note": "未登录入口：登录 / 注册分段开关 + 演示账号一键进入"
+  },
+  {
+    "id": "p02",
+    "no": "P-02",
+    "title": "找局首页",
+    "note": "一句话找局 + 推荐理由标签 + 最近活动"
+  },
+  {
+    "id": "p03",
+    "no": "P-03",
+    "title": "活动列表",
+    "note": "按项目 / 状态 / 时间筛选，卡片带名额进度条"
+  },
+  {
+    "id": "p04",
+    "no": "P-04",
+    "title": "活动详情（参与者）",
+    "note": "报名 / 退报 / 签到入口，含临期取消提醒"
+  },
+  {
+    "id": "p05",
+    "no": "P-05",
+    "title": "活动详情（发起人）",
+    "note": "只有发起人看得到签到码，并可直接进入考勤"
+  },
+  {
+    "id": "p06",
+    "no": "P-06",
+    "title": "发起活动",
+    "note": "表单校验 + 时间本地转 UTC + 场地坐标标记"
+  },
+  {
+    "id": "p07",
+    "no": "P-07",
+    "title": "签到",
+    "note": "签到码 / 定位两种方式并列，失败态细分"
+  },
+  {
+    "id": "p08",
+    "no": "P-08",
+    "title": "管理活动",
+    "note": "签到码大字展示 + 到场勾选 + 提交考勤"
+  },
+  {
+    "id": "p09",
+    "no": "P-09",
+    "title": "我的局",
+    "note": "我发起的 / 我报名的，取消前二次确认"
+  },
+  {
+    "id": "p10",
+    "no": "P-10",
+    "title": "我的",
+    "note": "信用分环形卡 + 评价汇总 + 账号信息"
+  },
+  {
+    "id": "p11",
+    "no": "P-11",
+    "title": "个人主页（他人）",
+    "note": "信用分、评价分布条形、印象标签"
+  },
+  {
+    "id": "p12",
+    "no": "P-12",
+    "title": "评价同场伙伴",
+    "note": "星级 + 印象标签 + 一句话，仅到场者可评"
+  }
+];
+
+  var ROUTE = {
+  "open-activity": "p04",
+  "go-detail": "p04",
+  "go-activities": "p03",
+  "go-list": "p03",
+  "go-checkin": "p07",
+  "go-review": "p12",
+  "go-new": "p06",
+  "go-edit": "p06",
+  "go-manage": "p08",
+  "open-attendance": "p08",
+  "view-user": "p11",
+  "go-my-page": "p11",
+  "go-login": "p01",
+  "go-discover": "p02",
+  "logout": "p01",
+  "demo": "p02"
+};
+  var HREF_ROUTE = {
+  "#/discover": "p02",
+  "#/activities": "p03",
+  "#/manage": "p09",
+  "#/me": "p10"
+};
+  var VISUAL = [
+  "switch",
+  "mode",
+  "tab",
+  "filter",
+  "pick-sport",
+  "star",
+  "tag",
+  "dur",
+  "filter-match"
+];
+  var BACK = {
+  "p01": "p01",
+  "p02": "p01",
+  "p03": "p02",
+  "p04": "p03",
+  "p05": "p03",
+  "p06": "p02",
+  "p07": "p09",
+  "p08": "p09",
+  "p09": "p02",
+  "p10": "p02",
+  "p11": "p10",
+  "p12": "p09"
+};
+
+  var sections = [].slice.call(document.querySelectorAll('.screen'));
+  var ids = sections.map(function (s) { return s.id; });
+  var chromeLabel = document.getElementById('chromeLabel');
+  var chromeNote = document.getElementById('chromeNote');
+  var toastEl = document.getElementById('toast');
+  var toastTimer = null;
+
+  function meta(id) {
+    for (var i = 0; i < SCREENS.length; i++) if (SCREENS[i].id === id) return SCREENS[i];
+    return null;
+  }
+
+  /** 显示某一屏；push=true 时写入 hash（形成可回退的历史） */
+  function show(id, push) {
+    if (ids.indexOf(id) < 0) id = ids[0];
+    sections.forEach(function (s) { s.classList.toggle('is-active', s.id === id); });
+    var m = meta(id);
+    if (m && chromeLabel) {
+      chromeLabel.textContent = m.no + ' ' + m.title;
+      chromeNote.textContent = m.note || '';
+    }
+    if (push && location.hash.slice(1) !== id) {
+      location.hash = id;
+    } else if (!push) {
+      var active = document.getElementById(id);
+      if (active) active.scrollTop = 0;
+    }
+    document.title = (m ? m.no + ' ' + m.title + ' · ' : '') + 'SportsBuddy 原型';
+  }
+
+  function toast(msg) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('is-show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('is-show'); }, 2200);
+  }
+
+  function current() {
+    var h = location.hash.slice(1);
+    return ids.indexOf(h) >= 0 ? h : ids[0];
+  }
+
+  function goto(id, why) {
+    if (ids.indexOf(id) < 0) return;
+    show(id, true);
+    if (why) toast(why);
+  }
+
+  /* ---------------- 分段开关 / chip / 复选框：本地视觉反馈 ---------------- */
+  function pressInGroup(el) {
+    // 同一个 sm-switch / sm-filters / 分段容器里，只允许一个按下
+    var group = el.closest('.sm-switch, .sm-filters, [role="group"]');
+    if (group) {
+      [].slice.call(group.querySelectorAll('[aria-pressed]')).forEach(function (b) {
+        b.setAttribute('aria-pressed', String(b === el));
+      });
+    } else {
+      el.setAttribute('aria-pressed', el.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-goto], [data-action]');
+    if (!el) return;
+
+    /* 1) 显式跳转 */
+    if (el.hasAttribute('data-goto')) {
+      goto(el.getAttribute('data-goto'));
+      return;
+    }
+
+    var action = el.getAttribute('data-action');
+
+    /* 2) 跨屏动作 */
+    if (ROUTE[action]) {
+      e.preventDefault();
+      goto(ROUTE[action], '跳转到「' + meta(ROUTE[action]).title + '」');
+      return;
+    }
+
+    /* 3) 底部标签栏 */
+    if (action === 'nav') {
+      var href = el.getAttribute('data-href') || '';
+      if (HREF_ROUTE[href]) {
+        e.preventDefault();
+        goto(HREF_ROUTE[href]);
+      }
+      return;
+    }
+
+    /* 4) 返回：优先用浏览器历史；没有历史时按 BACK 表退回上级页面 */
+    if (action === 'back') {
+      e.preventDefault();
+      if (history.length > 1) {
+        history.back();
+      } else {
+        goto(BACK[current()] || ids[0]);
+      }
+      return;
+    }
+
+    /* 5) 纯视觉状态：分段开关 / 筛选 chip / 标签 / 星级 / 时长快捷 */
+    if (VISUAL.indexOf(action) >= 0) {
+      e.preventDefault();
+      pressInGroup(el);
+      return;
+    }
+
+    /* 6) 「用这句话找局」示例：把示例文字填进输入框，制造"能用"的感觉 */
+    if (action === 'use-example') {
+      e.preventDefault();
+      var txt = el.getAttribute('data-text') || '';
+      var input = el.closest('section') && el.closest('section').querySelector('input[name="sentence"]');
+      if (input) { input.value = txt; }
+      toast('已填入示例：' + txt);
+      return;
+    }
+
+    /* 7) 「只看还有空位」：原型里直接切换复选框 */
+    if (action === 'toggle-available') {
+      e.preventDefault();
+      var cb = el.matches('input[type="checkbox"]') ? el : el.querySelector('input[type="checkbox"]');
+      if (cb) cb.checked = !cb.checked;
+      return;
+    }
+
+    /* 8) 全选 / 全不选到场：把同一张卡里的复选框一起改 */
+    if (action === 'check-all' || action === 'check-none') {
+      e.preventDefault();
+      var card = el.closest('.sm-card') || el.closest('main');
+      var boxes = card ? card.querySelectorAll('input[name="attended"]') : [];
+      for (var i = 0; i < boxes.length; i++) boxes[i].checked = action === 'check-all';
+      toast(action === 'check-all' ? '已全选到场' : '已全部取消勾选');
+      return;
+    }
+
+    /* 9) 复选框本身交给浏览器原生行为 */
+    if (el.matches('input[type="checkbox"]')) return;
+
+    /* 10) 其余需要接口的动作：提示"真实应用里会调接口"，不改数据 */
+    e.preventDefault();
+    toast('原型演示：这一步在真实应用里会调用接口（' + action + '）');
+  });
+
+  /* ---------------- 工具条 ---------------- */
+  document.querySelectorAll('[data-nav]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var i = ids.indexOf(current());
+      var d = btn.getAttribute('data-nav') === 'next' ? 1 : -1;
+      var n = (i + d + ids.length) % ids.length;
+      goto(ids[n]);
+    });
+  });
+
+  var jumpMenu = document.getElementById('jumpMenu');
+  document.getElementById('btnJump').addEventListener('click', function () {
+    jumpMenu.classList.add('is-open');
+  });
+  document.getElementById('btnJumpClose').addEventListener('click', function () {
+    jumpMenu.classList.remove('is-open');
+  });
+  jumpMenu.addEventListener('click', function (e) {
+    if (e.target === jumpMenu) jumpMenu.classList.remove('is-open');
+  });
+
+  var btnHot = document.getElementById('btnHotspots');
+  btnHot.addEventListener('click', function () {
+    var on = document.body.classList.toggle('hotspots-on');
+    btnHot.setAttribute('aria-pressed', String(on));
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') jumpMenu.classList.remove('is-open');
+    if (e.key === 'ArrowRight' && !jumpMenu.classList.contains('is-open')) {
+      var i = ids.indexOf(current());
+      goto(ids[(i + 1) % ids.length]);
+    }
+    if (e.key === 'ArrowLeft' && !jumpMenu.classList.contains('is-open')) {
+      var j = ids.indexOf(current());
+      goto(ids[(j - 1 + ids.length) % ids.length]);
+    }
+  });
+
+  window.addEventListener('hashchange', function () { show(current(), false); });
+
+  /* 启动 */
+  show(current(), false);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ff6a3d" />
+    <title>SportsBuddy · 校园运动组局</title>
+    <link rel="stylesheet" href="./assets/css/app.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <noscript>本应用需要开启 JavaScript。</noscript>
+
+    <!--
+      ======================================================================
+      全工程唯一需要改的配置
+      ======================================================================
+      useMock     true  = 使用内置离线示意数据（断网也能演示，默认）
+                  false = 请求真实后端，地址取下面的 apiBaseUrl
+      apiBaseUrl  真实后端地址。常见取值：
+                    本地跑后端        http://127.0.0.1:8000
+                    同学的线上后端    https://sportmate-backend-gm34.onrender.com
+                    同局域网同学的机器 http://192.168.x.x:8000
+                  注意：改完必须刷新页面；线上实例冷启动要 30~60 秒，
+                  启动时会先请求 /health 预热并给出提示。
+      ======================================================================
+    -->
+    <script>
+      window.__SPORTSBUDDY_CONFIG__ = {
+        useMock: true,
+        apiBaseUrl: 'http://127.0.0.1:8000',
+      }
+    </script>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

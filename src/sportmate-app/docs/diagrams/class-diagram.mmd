@@ -1,0 +1,220 @@
+%% ============================================================================
+%%  SportsBuddy · 领域类图
+%%  依据：后端接口契约（《前端对接文档》第六节真实响应示例 + 后端 OpenAPI /docs）
+%%  渲染：任意支持 Mermaid 的编辑器 / mermaid.live / IDE 插件；
+%%        本工程另附 tools/render-class-diagram.py 可离线渲染成 SVG。
+%%
+%%  说明：
+%%    1. 类名用英文标识（与 JSON 字段、代码中的对象一一对应），中文注释为业务含义。
+%%    2. 属性格式按 Mermaid 语法写 "类型 名称"，例如 "int id"。
+%%    3. 组合/聚合关系用 *-- / o--，依赖用 ..>，实线箭头 --|> 表示"是一种"。
+%%    4. 与后端的对应：Activity = 活动表；Participant 是 GET /activities/{id}
+%%       里 participants[] 的投影，不是独立数据库表（见下方 note）。
+%% ============================================================================
+
+classDiagram
+direction LR
+
+    class User {
+        <<实体>>
+        int id
+        string username
+        string nickname
+        string campus
+        SkillLevel skillLevel
+        string[] favoriteSports
+        int reliabilityScore
+        int completedCount
+        int noShowCount
+        float reviewAverage
+        int reviewCount
+        datetime createdAt
+        +注册() AuthSession
+        +登录() AuthSession
+        +修改资料() User
+        +查信用分() int
+    }
+
+    class Activity {
+        <<实体>>
+        int id
+        string title
+        string sport
+        string description
+        string campus
+        string location
+        float latitude
+        float longitude
+        datetime startTime
+        datetime endTime
+        SkillLevel skillLevel
+        int capacity
+        GenderLimit genderLimit
+        int fee
+        ActivityStatus status
+        string checkinCode
+        datetime createdAt
+        int joinedCount
+        int slotsLeft
+        +是否可报名() bool
+        +剩余名额() int
+        +显示签到码(查看者) string
+        +取消() void
+    }
+
+    class Participant {
+        <<投影视图>>
+        int userId
+        string nickname
+        SkillLevel skillLevel
+        int reliabilityScore
+        RegistrationStatus status
+        string note
+        datetime checkedInAt
+        CheckinMethod checkinMethod
+    }
+
+    class Registration {
+        <<实体>>
+        int id
+        int activityId
+        int userId
+        RegistrationStatus status
+        string note
+        bool isLateCancel
+        datetime checkedInAt
+        CheckinMethod checkinMethod
+        int checkinDistanceM
+        datetime createdAt
+        +签到(凭证) CheckinResult
+        +取消() Registration
+    }
+
+    class Review {
+        <<实体>>
+        int id
+        int activityId
+        int reviewerId
+        int revieweeId
+        int score
+        string[] tags
+        string comment
+        datetime createdAt
+        +提交() Review
+    }
+
+    class Sport {
+        <<字典>>
+        int id
+        string name
+        string icon
+        int defaultCapacity
+    }
+
+    class MatchResult {
+        <<计算结果>>
+        Activity activity
+        float score
+        MatchReason reason
+        +为什么推荐() string[]
+    }
+
+    class MatchReason {
+        <<值对象>>
+        bool sport
+        bool time
+        bool skill
+        bool campus
+        float distanceKm
+        int slotsLeft
+    }
+
+    class AuthSession {
+        <<值对象>>
+        string accessToken
+        string tokenType
+        datetime expiresAt
+    }
+
+    class CheckinResult {
+        <<值对象>>
+        bool success
+        CheckinMethod method
+        int distanceM
+        string message
+        Registration registration
+    }
+
+    class SkillLevel {
+        <<枚举>>
+        beginner 新手
+        intermediate 一般
+        advanced 熟练
+        any 不限
+    }
+
+    class ActivityStatus {
+        <<枚举>>
+        open 可报名
+        full 已满员
+        ongoing 进行中
+        finished 已结束
+        cancelled 已取消
+    }
+
+    class RegistrationStatus {
+        <<枚举>>
+        registered 已报名
+        checked_in 已签到
+        attended 已确认到场
+        no_show 爽约
+        cancelled 已取消
+    }
+
+    class CheckinMethod {
+        <<枚举>>
+        code 签到码
+        location 定位
+    }
+
+    class GenderLimit {
+        <<枚举>>
+        any 不限
+        male 限男生
+        female 限女生
+    }
+
+    %% ------------------------------------------------------------------
+    %% 关系（多重性写在两端）
+    %% ------------------------------------------------------------------
+    User "1" --> "0..*" Activity : 发起 organizer
+    Sport "1" o-- "0..*" Activity : 属于 sport
+    User "1" --> "0..*" Registration : 报名
+    Activity "1" *-- "0..*" Registration : 包含报名
+    Registration "0..*" --> "1" Participant : 投影为名单项
+    Activity "1" *-- "0..*" Participant : 参与者名单
+    User "1" --> "0..*" Review : 发出评价 reviewer
+    User "1" --> "0..*" Review : 收到评价 reviewee
+    Activity "1" o-- "0..*" Review : 活动内互评
+    Activity "1" --> "0..1" MatchReason : 参与计算
+    MatchResult "1" *-- "1" Activity : 命中
+    MatchResult "1" *-- "1" MatchReason : 解释
+    User "0..*" ..> "1" AuthSession : 登录后持有
+    Registration "1" ..> "0..1" CheckinResult : 签到产出
+    Activity ..> SkillLevel : 使用
+    Activity ..> ActivityStatus : 使用
+    Activity ..> GenderLimit : 使用
+    Registration ..> RegistrationStatus : 使用
+    Registration ..> CheckinMethod : 使用
+    User ..> SkillLevel : 使用
+
+%% ----------------------------------------------------------------------------
+%%  领域不变量（前端必须按这些约束渲染，判定逻辑集中在 shared/domain.js）
+%%    1. reliabilityScore < 60 → 无法报名新活动（后端 403）
+%%    2. 活动开始前 2 小时内取消报名 → isLateCancel = true，扣 5 分
+%%    3. 考勤未勾选者 → status = no_show，扣 15 分
+%%    4. checkinCode 仅发起人可见（他人拿到 null）
+%%    5. 距活动地点 > 300 米 → 定位签到失败（403）
+%%    6. fee 单位为"分"，展示时 ÷100
+%%    7. 所有时间字段为 UTC 串，前端补 Z 解析后按本地时区显示
+%% ----------------------------------------------------------------------------
