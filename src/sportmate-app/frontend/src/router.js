@@ -7,7 +7,7 @@
  * 守卫规则：ROUTES[name].auth === true 的页面在未登录时跳转到 #/login。
  */
 
-import { ROUTES, parseHash, store } from './store.js'
+import { ROUTES, parseHash, href, store } from './store.js'
 import { clearFlash, flash } from './store.js'
 import { setPage, setShell } from './shared/ui.js'
 
@@ -19,8 +19,13 @@ export function register(name, loader) {
   registry.set(name, loader)
 }
 
+/**
+ * 跳转到某个页面。
+ * 路径统一走 store.href()，避免"这里手拼、那里手拼"导致 review 这种
+ * 带两个参数的页面拼错（`#/review/undefined`）。
+ */
 export function navigate(name, params = {}) {
-  const path = params.id != null ? `#/${name}/${params.id}` : `#/${name}`
+  const path = href(name, params)
   if (location.hash === path) handleRoute()
   else location.hash = path
 }

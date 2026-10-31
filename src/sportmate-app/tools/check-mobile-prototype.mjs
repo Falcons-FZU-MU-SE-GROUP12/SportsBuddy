@@ -138,7 +138,41 @@ for (let i = 1; i < chunks.length; i += 2) {
 }
 if (!contentBad) ok('12 屏内容均含关键文案（防止"有 section 但渲染成别的视图"）')
 
-/* ---------------- 7) 关键交互钩子 ---------------- */
+/* ---------------- 7) 已修复缺陷的回归断言 ---------------- */
+/* 这四条对应作业四测试报告里的 P0-1 / P0-2 / P0-3 / P1-4，防止改回去 */
+{
+  const css = (html.match(/<style>([\s\S]*?)<\/style>/) || [])[1] || ''
+
+  // P0-1：HTML 的 class="screen" 必须有对应 CSS，且默认 display:none
+  const hasScreenRule = /\.screen\s*\{[^}]*display:\s*none/s.test(css)
+  const hasProtoScreenRule = /\.proto-screen\s*\{/.test(css)
+  if (hasScreenRule && !hasProtoScreenRule) ok('P0-1 已修：.screen 有 display:none 规则（12 屏不再同时显示）')
+  else bad('P0-1 回归：.screen 规则缺失或仍残留 .proto-screen', `screenRule=${hasScreenRule} protoScreen=${hasProtoScreenRule}`)
+
+  // P0-2：手机端隐藏顶栏的 media query 必须在基础 .proto-chrome 规则之后
+  const baseIdx = css.search(/\.proto-chrome\s*\{/)
+  const mqIdx = css.lastIndexOf('@media (max-width: 560px)')
+  const mqHidesChrome = /@media \(max-width: 560px\)[\s\S]*?\.proto-chrome\s*\{\s*display:\s*none/.test(css)
+  if (mqIdx > baseIdx && mqHidesChrome) ok('P0-2 已修：手机端隐藏顶栏的规则在基础样式之后（不再被覆盖）')
+  else bad('P0-2 回归：顶栏隐藏规则顺序不对', `base=${baseIdx} mq=${mqIdx} hides=${mqHidesChrome}`)
+
+  // P0-3：悬浮按钮只在自己的屏显示
+  if (/\.screen \.sm-fab\s*\{\s*display:\s*none/.test(css) &&
+      /\.screen\.is-active \.sm-fab\s*\{\s*display:\s*grid/.test(css)) {
+    ok('P0-3 已修：.sm-fab 只在激活屏显示（不再浮在所有屏上）')
+  } else {
+    bad('P0-3 回归：缺少 .sm-fab 作用域限制')
+  }
+
+  // P1-4：星级必须写 aria-checked（app.css 只认这个属性）
+  if (/setAttribute\('aria-checked'/.test(inlineScript) && /aria-checked/.test(css)) {
+    ok('P1-4 已修：星级交互写入 aria-checked（点击能变色）')
+  } else {
+    bad('P1-4 回归：星级交互没有写 aria-checked')
+  }
+}
+
+/* ---------------- 8) 关键交互钩子 ---------------- */
 const checks = [
   ['hashchange 路由', /addEventListener\('hashchange'/.test(inlineScript)],
   ['初始 show() 启动', /show\(current\(\),\s*false\)/.test(inlineScript)],

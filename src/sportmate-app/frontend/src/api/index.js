@@ -23,12 +23,26 @@ export const api = {
       method: 'POST',
       auth: false,
       body: { username, password, nickname, campus, skill_level, favorite_sports, phone },
+    }).then((data) => {
+      // ⚠️ 必须落盘：否则紧接着的 getMe() 不带 token，会返回 401「请先登录」
+      tokenStore.set(data.access_token)
+      return data
     })
   },
 
-  /** 登录。POST /auth/login —— token 有效期 30 天，401 表示过期。 */
+  /**
+   * 登录。POST /auth/login —— token 有效期 30 天，401 表示过期。
+   * ⚠️ 同样必须把 token 写进 localStorage，否则"登录成功后仍是未登录状态"。
+   */
   login(username, password) {
-    return http('/auth/login', { method: 'POST', auth: false, body: { username, password } })
+    return http('/auth/login', {
+      method: 'POST',
+      auth: false,
+      body: { username, password },
+    }).then((data) => {
+      tokenStore.set(data.access_token)
+      return data
+    })
   },
 
   /**

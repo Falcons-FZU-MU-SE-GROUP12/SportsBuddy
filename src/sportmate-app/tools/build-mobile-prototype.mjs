@@ -252,21 +252,13 @@ body.proto {
   box-shadow: 0 26px 70px rgba(20, 24, 38, .28), 0 0 0 10px #1b1e26, 0 0 0 12px #33363f;
   overflow: hidden;
 }
-/* 手机端：去掉外壳，铺满整屏 */
-@media (max-width: 560px), (max-height: 720px) {
-  body.proto { display: block; background: var(--bg); }
-  .proto-stage {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-    box-shadow: none;
-  }
-  .proto-chrome { display: none; }
-  .proto-screen { height: 100%; }
-}
-
 /* ================= 屏幕容器：一次只显示一屏 ================= */
-.proto-screen {
+/*
+ * ⚠️ 类名必须和 HTML 一致。HTML 里是 <section class="screen">，
+ * 之前 CSS 写的是 .proto-screen，于是 display:none 从未生效 →
+ * 12 屏全部 display:block 堆在一起，靠 .proto-stage 的 overflow:hidden 裁掉。
+ */
+.screen {
   position: absolute;
   inset: 0;
   overflow-y: auto;
@@ -275,7 +267,7 @@ body.proto {
   display: none;
   background: var(--bg);
 }
-.proto-screen.is-active { display: block; }
+.screen.is-active { display: block; }
 .screen__inner { min-height: 100%; padding-bottom: 8px; }
 
 /* ================= 顶部工具条（仅桌面端） ================= */
@@ -417,13 +409,35 @@ body.hotspots-on [data-action]::after {
   right: calc(50% - 179px);
   bottom: calc(50vh - 367px);
 }
-/* 手机端：框就是整屏，恢复成贴近屏幕右下角 */
-@media (max-width: 560px), (max-height: 720px) {
-  .screen__inner .sm-fab { right: 16px; bottom: 78px; }
-}
 
 /* 4) 有标签栏的屏留出底部空间，避免最后一条内容被栏挡住 */
 .screen__inner .sm-main { padding-bottom: 96px; }
+
+/* 5) 悬浮按钮只属于它自己那一屏：别的屏显示时不允许出现（P0-3） */
+.screen .sm-fab { display: none; }
+.screen.is-active .sm-fab { display: grid; }
+
+/* =========================================================================
+   手机端适配：必须放在所有基础规则【之后】
+   -------------------------------------------------------------------------
+   ⚠️ CSS 同优先级时后者胜。之前这段写在 .proto-chrome{display:flex} 之前，
+   导致手机上顶栏没有被隐藏，反而占了 129.9px 高度压住内容（P0-2）。
+   现在统一挪到样式表末尾。
+   ========================================================================= */
+@media (max-width: 560px), (max-height: 720px) {
+  body.proto { display: block; background: var(--bg); padding-top: 0; }
+  .proto-stage {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  /* 手机上没有鼠标，工具条没有意义，直接隐藏 */
+  .proto-chrome { display: none; }
+  /* 屏高跟随视口，保证一屏刚好占满 */
+  .screen { height: 100%; }
+  .screen__inner .sm-fab { right: 16px; bottom: 78px; }
+}
 </style>
 </head>
 <body class="proto">
@@ -579,7 +593,25 @@ ${screensHtml}
       return;
     }
 
-    /* 5) 纯视觉状态：分段开关 / 筛选 chip / 标签 / 星级 / 时长快捷 */
+    /* 5) 星级评分：必须写 aria-checked
+          app.css 里 .sm-star[aria-checked="true"] 才会变金色，
+          之前和分段开关一样只写 aria-pressed，所以点了没反应（P1-4）。
+          语义：第 i 颗星被选中 ⇒ 0..i 全部点亮（1~5 分）。 */
+    if (action === 'star') {
+      e.preventDefault();
+      var group = el.closest('.sm-stars');
+      if (group) {
+        var stars = [].slice.call(group.querySelectorAll('.sm-star'));
+        var idx = stars.indexOf(el);
+        stars.forEach(function (s, i) {
+          s.setAttribute('aria-checked', String(i <= idx));
+        });
+        toast('已评分：' + (idx + 1) + ' 分');
+      }
+      return;
+    }
+
+    /* 6) 纯视觉状态：分段开关 / 筛选 chip / 标签 / 时长快捷 */
     if (VISUAL.indexOf(action) >= 0) {
       e.preventDefault();
       pressInGroup(el);

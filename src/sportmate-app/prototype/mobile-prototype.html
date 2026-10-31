@@ -1198,21 +1198,13 @@ body.proto {
   box-shadow: 0 26px 70px rgba(20, 24, 38, .28), 0 0 0 10px #1b1e26, 0 0 0 12px #33363f;
   overflow: hidden;
 }
-/* 手机端：去掉外壳，铺满整屏 */
-@media (max-width: 560px), (max-height: 720px) {
-  body.proto { display: block; background: var(--bg); }
-  .proto-stage {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-    box-shadow: none;
-  }
-  .proto-chrome { display: none; }
-  .proto-screen { height: 100%; }
-}
-
 /* ================= 屏幕容器：一次只显示一屏 ================= */
-.proto-screen {
+/*
+ * ⚠️ 类名必须和 HTML 一致。HTML 里是 <section class="screen">，
+ * 之前 CSS 写的是 .proto-screen，于是 display:none 从未生效 →
+ * 12 屏全部 display:block 堆在一起，靠 .proto-stage 的 overflow:hidden 裁掉。
+ */
+.screen {
   position: absolute;
   inset: 0;
   overflow-y: auto;
@@ -1221,7 +1213,7 @@ body.proto {
   display: none;
   background: var(--bg);
 }
-.proto-screen.is-active { display: block; }
+.screen.is-active { display: block; }
 .screen__inner { min-height: 100%; padding-bottom: 8px; }
 
 /* ================= 顶部工具条（仅桌面端） ================= */
@@ -1363,13 +1355,35 @@ body.hotspots-on [data-action]::after {
   right: calc(50% - 179px);
   bottom: calc(50vh - 367px);
 }
-/* 手机端：框就是整屏，恢复成贴近屏幕右下角 */
-@media (max-width: 560px), (max-height: 720px) {
-  .screen__inner .sm-fab { right: 16px; bottom: 78px; }
-}
 
 /* 4) 有标签栏的屏留出底部空间，避免最后一条内容被栏挡住 */
 .screen__inner .sm-main { padding-bottom: 96px; }
+
+/* 5) 悬浮按钮只属于它自己那一屏：别的屏显示时不允许出现（P0-3） */
+.screen .sm-fab { display: none; }
+.screen.is-active .sm-fab { display: grid; }
+
+/* =========================================================================
+   手机端适配：必须放在所有基础规则【之后】
+   -------------------------------------------------------------------------
+   ⚠️ CSS 同优先级时后者胜。之前这段写在 .proto-chrome{display:flex} 之前，
+   导致手机上顶栏没有被隐藏，反而占了 129.9px 高度压住内容（P0-2）。
+   现在统一挪到样式表末尾。
+   ========================================================================= */
+@media (max-width: 560px), (max-height: 720px) {
+  body.proto { display: block; background: var(--bg); padding-top: 0; }
+  .proto-stage {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  /* 手机上没有鼠标，工具条没有意义，直接隐藏 */
+  .proto-chrome { display: none; }
+  /* 屏高跟随视口，保证一屏刚好占满 */
+  .screen { height: 100%; }
+  .screen__inner .sm-fab { right: 16px; bottom: 78px; }
+}
 </style>
 </head>
 <body class="proto">
@@ -1504,7 +1518,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">周三晚篮球 3v3，缺两人</div>
         <div class="sm-act__meta">
-          <span>10-27 周二 22:02</span>
+          <span>11-1 周日 07:54</span>
           <span>·</span>
           <span>旗山校区 风雨操场 3 号场</span>
         </div>
@@ -1549,7 +1563,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">昨天那场篮球（已结束，用于评价演示）</div>
         <div class="sm-act__meta">
-          <span>10-26 周一 14:02</span>
+          <span>10-30 周五 23:54</span>
           <span>·</span>
           <span>旗山校区 风雨操场 1 号场</span>
         </div>
@@ -1663,7 +1677,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">周三晚篮球 3v3，缺两人</div>
         <div class="sm-act__meta">
-          <span>10-27 周二 22:02</span>
+          <span>11-1 周日 07:54</span>
           <span>·</span>
           <span>旗山校区 风雨操场 3 号场</span>
         </div>
@@ -1708,7 +1722,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">晨跑 5 公里 · 旗山环校</div>
         <div class="sm-act__meta">
-          <span>10-28 周三 17:02</span>
+          <span>11-2 周一 02:54</span>
           <span>·</span>
           <span>旗山校区 田径场东门</span>
         </div>
@@ -1753,7 +1767,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">足球 5v5，还差 3 人</div>
         <div class="sm-act__meta">
-          <span>10-30 周五 16:02</span>
+          <span>11-4 周三 01:54</span>
           <span>·</span>
           <span>旗山校区 人工草皮足球场</span>
         </div>
@@ -1798,7 +1812,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">乒乓球约练，晚上七点后</div>
         <div class="sm-act__meta">
-          <span>10-31 周六 18:02</span>
+          <span>11-5 周四 03:54</span>
           <span>·</span>
           <span>铜盘校区 体育馆乒乓球室</span>
         </div>
@@ -1843,7 +1857,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">游泳自由练习（限女生）</div>
         <div class="sm-act__meta">
-          <span>11-1 周日 21:02</span>
+          <span>11-6 周五 06:54</span>
           <span>·</span>
           <span>旗山校区 校游泳馆</span>
         </div>
@@ -1888,7 +1902,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">周末骑行 · 旗山到鼓山</div>
         <div class="sm-act__meta">
-          <span>11-2 周一 20:02</span>
+          <span>11-7 周六 05:54</span>
           <span>·</span>
           <span>旗山校区 校门口广场</span>
         </div>
@@ -2058,7 +2072,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">周三晚篮球 3v3，缺两人</div>
         <div class="sm-act__meta">
-          <span>10-27 周二 22:02</span>
+          <span>11-1 周日 07:54</span>
           <span>·</span>
           <span>旗山校区 风雨操场 3 号场</span>
         </div>
@@ -2103,7 +2117,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">晨跑 5 公里 · 旗山环校</div>
         <div class="sm-act__meta">
-          <span>10-28 周三 17:02</span>
+          <span>11-2 周一 02:54</span>
           <span>·</span>
           <span>旗山校区 田径场东门</span>
         </div>
@@ -2148,7 +2162,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">足球 5v5，还差 3 人</div>
         <div class="sm-act__meta">
-          <span>10-30 周五 16:02</span>
+          <span>11-4 周三 01:54</span>
           <span>·</span>
           <span>旗山校区 人工草皮足球场</span>
         </div>
@@ -2193,7 +2207,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">乒乓球约练，晚上七点后</div>
         <div class="sm-act__meta">
-          <span>10-31 周六 18:02</span>
+          <span>11-5 周四 03:54</span>
           <span>·</span>
           <span>铜盘校区 体育馆乒乓球室</span>
         </div>
@@ -2238,7 +2252,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">游泳自由练习（限女生）</div>
         <div class="sm-act__meta">
-          <span>11-1 周日 21:02</span>
+          <span>11-6 周五 06:54</span>
           <span>·</span>
           <span>旗山校区 校游泳馆</span>
         </div>
@@ -2283,7 +2297,7 @@ body.hotspots-on [data-action]::after {
       <div style="flex:1;min-width:0">
         <div class="sm-act__title">周末骑行 · 旗山到鼓山</div>
         <div class="sm-act__meta">
-          <span>11-2 周一 20:02</span>
+          <span>11-7 周六 05:54</span>
           <span>·</span>
           <span>旗山校区 校门口广场</span>
         </div>
@@ -2371,14 +2385,14 @@ body.hotspots-on [data-action]::after {
         
       </div>
       <h1 class="sm-hero__title">周三晚篮球 3v3，缺两人</h1>
-      <div class="sm-card__hint">6 小时后开始 · 10-27 周二 22:02 - 10-28 周三 00:02</div>
+      <div class="sm-card__hint">6 小时后开始 · 11-1 周日 07:54 - 09:54</div>
     </div></section>
     <main class="sm-main sm-stack">
       
       
       <section class="sm-card">
       <div class="sm-facts">
-        <div class="sm-fact"><span class="sm-fact__k">时间</span><span class="sm-fact__v">2026-10-27 22:02 起<br /><span class="sm-card__hint">10-27 周二 22:02 - 10-28 周三 00:02（本地时间）</span></span></div>
+        <div class="sm-fact"><span class="sm-fact__k">时间</span><span class="sm-fact__v">2026-11-01 07:54 起<br /><span class="sm-card__hint">11-1 周日 07:54 - 09:54（本地时间）</span></span></div>
         <div class="sm-fact"><span class="sm-fact__k">地点</span><span class="sm-fact__v">旗山校区 · 风雨操场 3 号场</span></div>
         <div class="sm-fact"><span class="sm-fact__k">人数</span><span class="sm-fact__v">3/6 人 · 还差 3 人</span></div>
         <div class="sm-fact"><span class="sm-fact__k">费用</span><span class="sm-fact__v">免费</span></div>
@@ -2469,14 +2483,14 @@ body.hotspots-on [data-action]::after {
         
       </div>
       <h1 class="sm-hero__title">羽毛球双打，水平一般即可</h1>
-      <div class="sm-card__hint">2 天后开始 · 10-29 周四 19:02 - 21:02</div>
+      <div class="sm-card__hint">2 天后开始 · 11-3 周二 04:54 - 06:54</div>
     </div></section>
     <main class="sm-main sm-stack">
       
       
       <section class="sm-card">
       <div class="sm-facts">
-        <div class="sm-fact"><span class="sm-fact__k">时间</span><span class="sm-fact__v">2026-10-29 19:02 起<br /><span class="sm-card__hint">10-29 周四 19:02 - 21:02（本地时间）</span></span></div>
+        <div class="sm-fact"><span class="sm-fact__k">时间</span><span class="sm-fact__v">2026-11-03 04:54 起<br /><span class="sm-card__hint">11-3 周二 04:54 - 06:54（本地时间）</span></span></div>
         <div class="sm-fact"><span class="sm-fact__k">地点</span><span class="sm-fact__v">旗山校区 · 体育馆 2 号场</span></div>
         <div class="sm-fact"><span class="sm-fact__k">人数</span><span class="sm-fact__v">4/4 人 · 名额已满</span></div>
         <div class="sm-fact"><span class="sm-fact__k">费用</span><span class="sm-fact__v">¥15/人</span></div>
@@ -2611,13 +2625,13 @@ body.hotspots-on [data-action]::after {
           <div class="sm-grid2">
             <label class="sm-field">
     <span class="sm-label">开始时间</span>
-    <input class="sm-input" name="start_time" type="datetime-local" value="2026-10-27T18:00"
+    <input class="sm-input" name="start_time" type="datetime-local" value="2026-11-01T03:00"
      placeholder=""  />
     
   </label>
             <label class="sm-field">
     <span class="sm-label">结束时间</span>
-    <input class="sm-input" name="end_time" type="datetime-local" value="2026-10-27T20:00"
+    <input class="sm-input" name="end_time" type="datetime-local" value="2026-11-01T05:00"
      placeholder=""  />
     
   </label>
@@ -2722,7 +2736,7 @@ body.hotspots-on [data-action]::after {
           <span class="sm-tag " >不限水平</span>
         </div>
         <p class="sm-card__hint" style="margin-top:4px">
-          10-27 周二 22:02 - 10-28 周三 00:02 · 旗山校区 风雨操场 3 号场
+          11-1 周日 07:54 - 09:54 · 旗山校区 风雨操场 3 号场
         </p>
         <div style="margin-top:12px"><div class="sm-alert sm-alert--warn" role="status">
     <span class="sm-alert__icon" aria-hidden="true">⏳</span>
@@ -2790,7 +2804,7 @@ body.hotspots-on [data-action]::after {
         </div>
         <h2 style="font-size:17px;font-weight:680;letter-spacing:-0.01em">羽毛球双打，水平一般即可</h2>
         <p class="sm-card__hint" style="margin-top:4px">
-          10-29 周四 19:02 - 21:02 · 旗山校区 体育馆 2 号场 ·
+          11-3 周二 04:54 - 06:54 · 旗山校区 体育馆 2 号场 ·
           2 天后
         </p>
         <div class="sm-row" style="margin-top:12px;flex-wrap:wrap">
@@ -2927,7 +2941,7 @@ body.hotspots-on [data-action]::after {
         <div style="flex:1;min-width:0" role="button" tabindex="0" data-action="open-activity" data-id="107">
           <div style="font-size:15px;font-weight:640;line-height:1.35">昨天那场篮球（已结束，用于评价演示）</div>
           <div class="sm-act__meta">
-            <span>10-26 周一 14:02</span>
+            <span>10-30 周五 23:54</span>
             <span>·</span>
             <span>旗山校区 风雨操场 1 号场</span>
           </div>
@@ -3112,7 +3126,7 @@ body.hotspots-on [data-action]::after {
             <span class="sm-list__icon">📅</span>
             <span class="sm-list__body">
               <span class="sm-list__title">注册时间</span>
-              <span class="sm-list__desc">2026-06-29 16:02</span>
+              <span class="sm-list__desc">2026-07-04 01:54</span>
             </span>
           </div>
         </div>
@@ -3229,7 +3243,7 @@ body.hotspots-on [data-action]::after {
                      </div>
                      <div class="sm-act__tags" style="margin-top:8px"><span class="sm-tag sm-tag--ok" >氛围好</span></div>
                      <p style="margin-top:8px;font-size:13.5px">新手也挺积极。</p>
-                     <p class="sm-card__hint" style="margin-top:8px">2026-10-22 16:02</p>
+                     <p class="sm-card__hint" style="margin-top:8px">2026-10-27 01:54</p>
                    </article>
              </section>
     </main>
@@ -3251,7 +3265,7 @@ body.hotspots-on [data-action]::after {
       <section class="sm-card">
         <h2 style="font-size:16.5px;font-weight:680">昨天那场篮球（已结束，用于评价演示）</h2>
         <p class="sm-card__hint" style="margin-top:4px">
-          旗山校区 · 风雨操场 1 号场 · 2026-10-26 14:02
+          旗山校区 · 风雨操场 1 号场 · 2026-10-30 23:54
         </p>
         <div class="sm-divider"></div>
         <p class="sm-card__hint">
@@ -3646,7 +3660,25 @@ body.hotspots-on [data-action]::after {
       return;
     }
 
-    /* 5) 纯视觉状态：分段开关 / 筛选 chip / 标签 / 星级 / 时长快捷 */
+    /* 5) 星级评分：必须写 aria-checked
+          app.css 里 .sm-star[aria-checked="true"] 才会变金色，
+          之前和分段开关一样只写 aria-pressed，所以点了没反应（P1-4）。
+          语义：第 i 颗星被选中 ⇒ 0..i 全部点亮（1~5 分）。 */
+    if (action === 'star') {
+      e.preventDefault();
+      var group = el.closest('.sm-stars');
+      if (group) {
+        var stars = [].slice.call(group.querySelectorAll('.sm-star'));
+        var idx = stars.indexOf(el);
+        stars.forEach(function (s, i) {
+          s.setAttribute('aria-checked', String(i <= idx));
+        });
+        toast('已评分：' + (idx + 1) + ' 分');
+      }
+      return;
+    }
+
+    /* 6) 纯视觉状态：分段开关 / 筛选 chip / 标签 / 时长快捷 */
     if (VISUAL.indexOf(action) >= 0) {
       e.preventDefault();
       pressInGroup(el);

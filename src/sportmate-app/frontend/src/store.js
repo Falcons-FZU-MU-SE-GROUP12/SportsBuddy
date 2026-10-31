@@ -95,23 +95,38 @@ export const ROUTES = {
   login: { title: '登录 / 注册', auth: false, bare: true },
 }
 
-/** 解析 hash（如 "#/activity/101"）为 { name, params }。 */
+/**
+ * 解析 hash（如 "#/activity/101"）为 { name, params }。
+ *
+ * ⚠️ 两处历史坑：
+ *   1. 用 `rest[1] ?? rest[0]` 取 review 参数：`#/review/107/` 的 rest 是 ['107','']，
+ *      空字符串不是 nullish，于是 id 被解析成 ''，评价页拿不到 activityId。
+ *   2. 空段没过滤，`#/review/107/` 会多出一个空串段。
+ * 现在统一：过滤空段、review 明确给出 activityId / userId。
+ */
 export function parseHash(hash) {
-  const raw = String(hash || '').replace(/^#\/?/, '')
+  const raw = String(hash || '').replace(/^#\/?/, '').split('?')[0]
   if (!raw) return { name: 'discover', params: {} }
-  const [name, ...rest] = raw.split('/')
+  const [name, ...tail] = raw.split('/')
   if (!ROUTES[name]) return { name: 'discover', params: {} }
+  const rest = tail.filter((s) => s !== '')
   const params = {}
-  if (rest[0]) {
-    if (name === 'user') params.id = rest[0]
-    else if (name === 'review') params.id = rest[1] ?? rest[0]
-    else params.id = rest[0]
+  if (name === 'review') {
+    // 评价页需要的是 activityId（可选再带 userId），不是泛指的 id
+    if (rest[0]) params.activityId = rest[0]
+    if (rest[1]) params.userId = rest[1]
+  } else if (rest[0]) {
+    params.id = rest[0]
   }
   return { name, params }
 }
 
 /** 生成 hash 地址。 */
 export function href(name, params = {}) {
-  if (name === 'review') return `#/review/${params.activityId}/${params.userId ?? ''}`
+  if (name === 'review') {
+    const activityId = params.activityId ?? params.id
+    if (activityId == null) return '#/review'
+    return params.userId != null ? `#/review/${activityId}/${params.userId}` : `#/review/${activityId}`
+  }
   return params.id != null ? `#/${name}/${params.id}` : `#/${name}`
 }
