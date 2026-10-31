@@ -18,6 +18,8 @@ export const store = {
   route: { name: 'discover', params: {} },
   /** 顶部反馈条 */
   flash: null, // { type: 'ok'|'error'|'info'|'warn', text: string }
+  /** 顶部反馈条是否还"欠"一次渲染（见下面 flash() 的说明） */
+  flashPending: false,
   /** 一次性 toast（自动消失） */
   toast: null,
   /** 是否已经从云端拿到过 /health（用于"正在唤醒服务器"提示） */
@@ -62,11 +64,27 @@ export async function loadSports() {
 export const sportIconOf = (name) =>
   store.sports.find((s) => s.name === name)?.icon ?? '🤸'
 
+/**
+ * 提示条是否还"欠"一次渲染。
+ * ---------------------------------------------------------------------------
+ * 常见写法是 flash('ok', ...) 之后紧接着 navigate(...)，而 router 在 hashchange
+ * 里会清掉 flash —— 结果提示刚写上就被抹掉（登录守卫的「需要先登录」就是这么丢的）。
+ * 这里用一个标记表示"这条提示还没被渲染过"，让它可以活过这一次跳转；
+ * ui.js 的 paint() 渲染完会把它复位，所以不会串到下一屏。
+ */
 export function flash(type, text) {
   store.flash = text ? { type, text } : null
+  store.flashPending = Boolean(store.flash)
 }
 
+/**
+ * 清掉提示条。
+ * 注意：还没被渲染过的提示（flashPending）不清 —— 很多页面在 load() 里会调
+ * clearFlash() 收拾上一屏的残留，如果照清不误，"登录成功""需要先登录"这种
+ * 刚设置就要跳到新页面显示的提示会被目标页自己抹掉。
+ */
 export function clearFlash() {
+  if (store.flashPending) return
   store.flash = null
 }
 

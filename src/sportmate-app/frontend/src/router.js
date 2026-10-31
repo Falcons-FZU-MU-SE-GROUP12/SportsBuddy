@@ -92,7 +92,10 @@ function errBlock(text) {
 /** 启动路由监听。 */
 export function startRouter() {
   window.addEventListener('hashchange', () => {
-    clearFlash()
+    // 上一屏 flash() 之后紧接着 navigate() 的提示要留给新页面显示；
+    // 已经渲染过的（flashPending=false）不能带到下一屏，否则会串味。
+    // 登录守卫的「这个页面需要先登录」就靠这一条才显示得出来。
+    if (!store.flashPending) clearFlash()
     handleRoute()
   })
   if (!location.hash) location.hash = '#/discover'

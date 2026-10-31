@@ -102,6 +102,7 @@ export function create() {
             <button type="button" style="flex:1" data-action="mode" data-value="register" aria-pressed="${!isLogin}">注册</button>
           </div>
 
+          ${store.flash ? `<div style="margin-bottom:12px">${alert(store.flash.type, store.flash.text)}</div>` : ''}
           ${state.error ? `<div style="margin-bottom:12px">${alert('error', state.error)}</div>` : ''}
 
           <form data-action="submit" novalidate>

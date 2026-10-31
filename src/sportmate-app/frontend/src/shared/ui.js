@@ -12,6 +12,8 @@
  *   2. 处理函数放在 page.actions["xxx"]，签名 (el, ctx)。
  */
 
+import { store } from '../store.js'
+
 let mountEl = null
 let currentPage = null
 let shell = { appBar: '', body: '', layers: [] }
@@ -93,6 +95,8 @@ function paint() {
   mountEl.innerHTML =
     (shell.appBar ?? '') + (shell.body ?? '') + (shell.layers ?? []).join('')
   restoreForm(mountEl, snap)
+  // 提示条只要被渲染过一次就算"用掉了"，下次跳转不会再被带到别的页面
+  store.flashPending = false
 }
 
 /* ---------------- 事件委托 ---------------- */

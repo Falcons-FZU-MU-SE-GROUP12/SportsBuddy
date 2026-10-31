@@ -939,12 +939,18 @@ def render_html(svg_body: str, classes: list[Klass], relations: list[Relation],
   .panel {{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px;
     box-shadow:0 6px 20px rgba(24,28,40,.06); overflow:auto; }}
   .panel h2 {{ margin:0 0 10px; font-size:15px; }}
-  .tables {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:18px; margin-top:22px; }}
+  /* min(360px,100%)：手机上格子不允许比容器还宽，否则整个页面会被撑出横向滚动条 */
+  .tables {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr)); gap:18px; margin-top:22px; }}
   table {{ width:100%; border-collapse:collapse; font-size:12.5px; }}
   th, td {{ text-align:left; padding:6px 9px; border-bottom:1px solid var(--line); vertical-align:top; }}
   th {{ color:var(--ink3); font-size:11.5px; font-weight:600; }}
   code {{ font-family:ui-monospace,Consolas,monospace; font-size:12px; }}
   .legend {{ margin-top:6px; color:var(--ink3); font-size:12.5px; }}
+  @media (max-width: 560px) {{
+    header {{ padding:20px 16px; }}
+    main {{ padding:16px 16px 60px; }}
+    .tables {{ gap:14px; }}
+  }}
   .tools {{ margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }}
   .tools button {{ font:inherit; font-size:13px; font-weight:600; border:1px solid var(--line);
     background:#fff; border-radius:9px; padding:6px 12px; cursor:pointer; color:var(--ink2); }}

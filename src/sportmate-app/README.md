@@ -1,4 +1,4 @@
-# SportsBuddy · 前端交付
+﻿# SportsBuddy · 前端交付
 
 依据 `sportmate后端.zip`（FastAPI 后端 + 《前端对接文档》19 个接口）实现的前端，
 外加**领域类图**与**可交互界面原型**。三项交付物都在本目录下，打开即可看。
@@ -137,7 +137,7 @@ sportmate-app/
    ├─ server.mjs                    零依赖静态服务器（支持 --prefix 模拟子路径部署）
    ├─ verify.mjs                    ★ 99 项自检
    ├─ check-links.mjs               链接与资源完整性检查
-   ├─ check-mobile-prototype.mjs    ★ 移动端原型自检（18 项）
+   ├─ check-mobile-prototype.mjs    ★ 移动端原型自检（22 项）
    ├─ browser-stub.mjs              Node 里跑页面模块用的浏览器环境替身
    ├─ build-prototype.mjs           生成 prototype/ 总览与展板
    ├─ build-mobile-prototype.mjs    ★ 生成单文件移动端原型
@@ -149,6 +149,9 @@ sportmate-app/
    ├─ make-share-package.mjs        ★ 打包"双击就能打开"的分享包
    ├─ check-share-package.mjs       分享包自检（29 项）
    ├─ check-extracted.mjs           对"解压后的副本"再验一次（12 项）
+   ├─ check-frontend-bugs.mjs       ★ A-1 / A-2 回归（token 落盘 / 路由参数透传，12 项）
+   ├─ test-e2e-flow.mjs             ★ 端到端用户旅程（登录→找局→报名→签到→评价，21 步）
+   ├─ browser-test.mjs              ★ 真实浏览器验收（CDP + 无头 Edge，108 项，出截图）
    └─ upload-to-github.mjs          用 GitHub API 上传（支持 --include-jpg / fork + PR）
 ```
 
@@ -196,7 +199,7 @@ node tools/check-extracted.mjs <解压目录>   # 12 项：验证 zip 解压后�
 | 本地交互 | 分段开关、筛选 chip、星级、标签、全选/全不选都能点；其余需要接口的动作给出提示 |
 
 > 重新生成：`node tools/build-mobile-prototype.mjs`；
-> 自检：`node tools/check-mobile-prototype.mjs`（18 项，含"每屏关键文案是否真的渲染出来了"）。
+> 自检：`node tools/check-mobile-prototype.mjs`（22 项，含"每屏关键文案是否真的渲染出来了"）。
 
 ### 原型图（JPG）是怎么来的
 
@@ -287,23 +290,34 @@ python tools/render-prototype-jpg.py --scale=3       # 提高分辨率（默认 
 
 ## 五、自检与再生成
 
-这台机器上没有可用的无头浏览器（沙盒禁止 Chromium 的进程间通信），
-所以"界面是否正确"用**程序化校验**兜底，不是靠肉眼：
+平时"界面是否正确"用**程序化校验**兜底（浏览器替身在 Node 里跑真实页面模块），
+需要"真浏览器里长什么样"时再跑 `tools/browser-test.mjs`（见本节末尾）：
 
 ```powershell
 node tools/verify.mjs                     # 99 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析
+node tools/check-frontend-bugs.mjs        # 12 项：A-1 token 落盘 / A-2 路由参数透传（回归）
+node tools/test-e2e-flow.mjs              # 21 步：登录→找局→报名→签到→评价，整条旅程
 node tools/check-links.mjs                # 入口页面的 js/css/svg 引用全部可达
 node tools/build-mobile-prototype.mjs     # 生成单文件移动端原型（12 屏可跳转）
-node tools/check-mobile-prototype.mjs     # 移动端原型自检：18 项
+node tools/check-mobile-prototype.mjs     # 移动端原型自检：22 项
 python tools/render-class-diagram.py      # 由 .mmd 生成 SVG + HTML
 python tools/check-class-diagram.py       # 类图几何校验：文字不溢出、连线不穿框、画布不截断
 python tools/render-class-diagram-jpg.py  # 由同一套布局生成类图 JPG
 python tools/render-prototype-jpg.py      # 12 个原型画面 → JPG
 python tools/check-mojibake.py            # 乱码校验：字体缺字 / 方法名被误判成属性
 node tools/build-prototype.mjs            # 重新生成原型总览与展板
+node tools/browser-test.mjs               # 108 项：真实无头 Edge 逐页验收 + 截图
 ```
 
-**移动端原型的 18 项校验**（`check-mobile-prototype.mjs`）盯的是"单文件能不能真的打开"：
+> **`browser-test.mjs`（真浏览器验收）**：用 DevTools Protocol 驱动无头 Edge/Chrome，
+> 真加载 ES Module、真点 `data-action`、真算布局（`scrollWidth` 越界）并收集控制台报错，
+> 截图落在 `out/browser-test/`。覆盖 11 个页面 + 4 个原型/类图入口 + 320/768/1280 三种屏宽。
+> ⚠️ Chromium 需要创建 IPC 管道：**在受限沙盒里会以
+> `platform_channel.cc: Check failed / OpenProcess 拒绝访问` 崩溃**（这也是之前
+> 只能用 Pillow 重绘 JPG 的原因）；给足以创建进程间通信的权限后即可正常跑。
+
+
+**移动端原型的 22 项校验**（`check-mobile-prototype.mjs`）盯的是"单文件能不能真的打开"：
 
 - 12 屏齐全、id 为 `p01…p12`、无重复；
 - **没有任何外部 `script/link/img` 引用**（file:// 下会 404 → 白屏）；
@@ -391,12 +405,14 @@ E. 一句话找局解析 ················· 14 项通过
 1. **未接真实后端实测**：本机没有外网（`curl` 访问 GitHub / npm / Render 全部超时），
    所以所有验证都跑在内置 mock 上。接口路径、参数、字段、状态码均严格对照《前端对接文档》，
    但"真实后端联调"这一步没做过 —— 这是环境限制，不是取舍。
-2. **原型图是"重绘"而非"截图"**：沙盒禁止 Chromium 的进程间通信
+2. **原型图是"重绘"而非"截图"**：默认沙盒禁止 Chromium 的进程间通信
    （`platform_channel.cc: Check failed`），Edge 无头模式起不来，所以拿不到真实网页截图。
    现在的 `out/prototype-jpg/` 是用 Pillow 按同一套设计令牌与 CSS 尺寸**重画**的，
    因此**不是浏览器渲染的像素级还原**：字体回退到微软雅黑、个别 emoji 用几何图形代替
    （如定位图钉）、长文本换行位置可能与浏览器略有差异。
    要看真实的浏览器渲染效果，用 `prototype/screens.html`（可交互、可当场演示）。
+   > 放行 IPC 后可以真截图：`node tools/browser-test.mjs` 会把真实渲染结果存到
+   > `out/browser-test/`（11 个页面 + 原型/类图 + 320/768/1280 三种屏宽）。
 3. **演示用数据是示意数据**：`frontend/src/fixtures/index.js` 里的 4 个用户、9 场活动、
    5 条评价全部是编的，不是真实用户信息。
 4. **离线 mock 的数据库在内存里**：刷新页面即还原。要持久化就接真实后端。
