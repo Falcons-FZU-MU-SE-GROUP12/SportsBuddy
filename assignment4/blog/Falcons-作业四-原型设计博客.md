@@ -156,7 +156,7 @@ Visual design principles:
 - [x] Responsive at 320 / 768 / 1280 px without horizontal overflow
 - [x] Consistent colour, typography and components
 - [x] Real-browser verification (108 checks) and end-to-end flow (21 steps)
-- [ ] Non-posed team discussion photo 【待填】
+- [x] Non-posed team discussion photo
 - [x] Public prototype link (MoDao)
 
 ---
@@ -215,9 +215,13 @@ Visual design principles:
 
 ### 6.1 Team Photo
 
-![Team discussion (non-posed)](【待填：团队非摆拍讨论照片】)
+![Team discussion (non-posed) 1](../evidence/team-discussion-1.jpg)
 
-*Non-posed photo of the team during a discussion.*
+*Figure 15. Non-posed photo of the team discussing the prototype.*
+
+![Team discussion (non-posed) 2](../evidence/team-discussion-2.jpg)
+
+*Figure 16. The team reviewing the prototype flow together.*
 
 ### 6.2 Team Feelings and Evaluations
 
