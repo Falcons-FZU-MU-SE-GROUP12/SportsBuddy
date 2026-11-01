@@ -223,6 +223,7 @@ Visual design principles:
 
 | Member | Role | Comment |
 | --- | --- | --- |
+| Huang Zhiyuan | Project Management (Team Lead) | As team lead, I am proud of how this group turned a vague idea about campus sports into a working, testable prototype. Everyone took ownership of their part — product, frontend, backend, algorithm and testing — and our weekly syncs and GitHub work log kept us aligned without heavy process. The main lesson for me was that clear scope and a working prototype beat a perfect plan: when problems appeared, we discussed them openly, fixed the root cause and re-verified the result. I am confident we can carry this pace into development and deliver a product students will actually use. |
 | Zhang Zile | Product Requirements | I've had a great experience working with the team so far. Whenever we face challenges, we communicate and discuss them together, each doing our part and collaborating seamlessly. I'm looking forward to us successfully completing the project and wrapping it up smoothly! |
 | Ye Yifan | Product Requirements | During the prototype design and overall framework establishment phase, the team repeatedly deliberated on the details of the plan, proactively anticipated potential risks in the development process, and continuously optimized the design concept. The rigorous refinement process reduced potential development risks in the future and made the project plan more reliable and feasible. |
 | Lin Zijun | Frontend Development | This is a team that finishes things: they started with a vague idea about campus sports and ended with a product that actually works. |
@@ -236,7 +237,7 @@ Visual design principles:
 | Cai Yaohua | Algorithm | Team members have their respective roles. We prioritize delivering the minimum viable prototype and keep refining it based on feedback. The project maintains a manageable pace with clear goals and stays on track. |
 | Wang Shaojie | Testing | This team has shown me the power of teamwork. We split tasks clearly, and we always pull together to get through every difficulty. |
 
-**Team summary**: the team kept a clear division of labour and direct communication throughout the assignment. Starting from the shared SRS and the 12-screen prototype, each member owned a screen or a document section, and the testing group verified the flow against the requirements. Iterating on a working prototype instead of a static design gave the team a concrete basis for discussion and reduced the risk before development.
+**Overall evaluation**: the team completed the prototype design with a clear division of labour, transparent progress tracking through the GitHub work log, and a test-driven review loop. The 12-screen interactive prototype covers the full user journey and maps to the SRS modules M1–M5. The prototype and the web app were verified with 188 automated checks, 108 real-browser checks and a 21-step end-to-end flow; every defect found in review was fixed and re-verified. Communication was direct and help was offered without being asked. The remaining work before the defence is to finalise the presentation, add the non-posed team photo, and confirm that the public MoDao prototype link opens and navigates correctly.
 
 ---
 
