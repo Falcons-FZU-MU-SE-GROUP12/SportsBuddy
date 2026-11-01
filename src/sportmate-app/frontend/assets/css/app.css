@@ -180,7 +180,14 @@ svg {
   border-radius: 9px;
   background: linear-gradient(135deg, var(--brand) 0%, #ff9166 100%);
   color: #fff;
-  display: grid;
+  /*
+   * ⚠️ 必须是 inline-grid 而不是 grid。
+   * 这个图标有时出现在 text-align:center 的段落里（登录页页脚「🏸 尚未登录」），
+   * 用 grid 会变成块级盒子 → 不参与文字居中 → 图标单独占一行贴在左边，
+   * 文字被挤到下一行，看起来像"凭空多出一个浮动图标"。
+   */
+  display: inline-grid;
+  vertical-align: middle;
   place-items: center;
   font-size: 16px;
   box-shadow: 0 3px 10px rgba(255, 106, 61, 0.32);
