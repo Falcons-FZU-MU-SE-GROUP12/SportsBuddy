@@ -24,6 +24,7 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-01 | JorgeHUANG7 | 修改 | `assignment4/blog/` | 补充队长评价与整体评价 | 作业四 |
 | 2026-11-01 | JorgeHUANG7 | 修改 | `assignment4/blog/` | 补充第 6 章团队感受与成员评价（12 人评论 + 团队总结） | 作业四 |
 | 2026-11-01 | 060725 | 修改 | `assignment4/testing/SportsBuddy_作业四_差距分析与测试报告.md`、`assignment4/testing/assets/` | 将差距分析与测试报告由 Word 转为 Markdown（提取 4 张配图到 `assets/`），删除原 `.docx` | 作业四 |
 | 2026-11-01 | 060725 | 新增 | `assignment4/testing/SportsBuddy_作业四_差距分析与测试报告.docx`、`WORKLOG.md` | 上传作业四「差距分析与软件测试报告」（Word）：按 CSDN 评分点核对交付物缺口，记录原型未发布（GitHub Pages 404）、原型 4 个浏览器端缺陷（12 屏同时渲染、长页面无法滚动等）、前端 2 个阻断性 bug（登录不保存 token、带参数路由丢失参数），并附读取清单与测试结论 | 作业四 |
