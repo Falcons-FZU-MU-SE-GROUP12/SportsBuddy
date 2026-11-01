@@ -28,7 +28,6 @@
 | --- | --- |
 | Interactive prototype (MoDao) | [Open the prototype](https://modao.cc/proto/Ebn0JeMtntbdoIJ4M1YfJ/sharing?view_mode=device&screen=rbpVZhivzU9Oi3sQI&canvasId=rcVZhizWXA9fQ9c4) |
 | Prototype design report PPT | [PPTX](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment4/slides/Falcons-Assignment4-Prototype-Design.pptx) · [PDF](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment4/slides/Falcons-Assignment4-Prototype-Design.pdf) |
-| PPT PDF | [PDF](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/blob/main/assignment4/slides/Falcons-Assignment4-Prototype-Design.pdf) |
 | Prototype source / screenshots | [assignment4/prototype](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/tree/main/assignment4/prototype) |
 | Testing evidence | [assignment4/testing](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/tree/main/assignment4/testing) |
 | Team repository | [Falcons-FZU-MU-SE-GROUP12/SportsBuddy](https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy) |
