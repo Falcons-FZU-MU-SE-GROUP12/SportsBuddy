@@ -213,11 +213,30 @@ Visual design principles:
 
 ## 6. Team Photo and Feelings
 
+### 6.1 Team Photo
+
 ![Team discussion (non-posed)](【待填：团队非摆拍讨论照片】)
 
 *Non-posed photo of the team during a discussion.*
 
-【待填：每人一句团队感受 / 对队友的评价】
+### 6.2 Team Feelings and Evaluations
+
+| Member | Role | Comment |
+| --- | --- | --- |
+| Zhang Zile | Product Requirements | I've had a great experience working with the team so far. Whenever we face challenges, we communicate and discuss them together, each doing our part and collaborating seamlessly. I'm looking forward to us successfully completing the project and wrapping it up smoothly! |
+| Ye Yifan | Product Requirements | During the prototype design and overall framework establishment phase, the team repeatedly deliberated on the details of the plan, proactively anticipated potential risks in the development process, and continuously optimized the design concept. The rigorous refinement process reduced potential development risks in the future and made the project plan more reliable and feasible. |
+| Lin Zijun | Frontend Development | This is a team that finishes things: they started with a vague idea about campus sports and ended with a product that actually works. |
+| Li Zhenhao | Frontend Development | Working on this sports buddy project together is more than just finishing a product for me. Everyone takes charge of their own part, with the backend, product and design teams cooperating closely. We discuss problems together, and anyone who gets stuck gets support from the rest. As a frontend developer, many of my ideas about interfaces and interactions have been refined thanks to our group discussions. The process of iterating and adjusting alongside all of you means more to me than the final result. |
+| Li Haoze | Frontend Development | The team demonstrates strong execution capability, transforming an initial, imprecise concept centered on campus sports into a viable and functioning end product |
+| He Jinghao | Frontend Development | Our teammates have a strong sense of responsibility. We proactively discuss and adjust plans, enjoy great collaboration, and help one another to finish the SportsBuddy project. |
+| Zhang Jingtian | Backend Development | In this software engineering course project, I am fortunate to design SportsBuddy together with all team members. From requirement investigation and discussions on functional solutions to prototype design and module division, everyone has been actively involved and communicated proactively. When facing conflicting requirements or technical challenges, our team can discuss, weigh options and support one another. This collaboration has made me realize that a software project is not an individual task, but an outcome generated through the collision of ideas and mutual cooperation among members. |
+| Yu Chenghao | Backend Development | Our team has clear goals and moves at a great pace—from choosing Modao for prototyping to setting up the overall framework, everything feels efficient and gives me a lot of confidence for the upcoming development. |
+| Zhang Xinyu | Backend Development | Our team keeps efficient communication during daily development. We regularly synchronize progress on GitHub, fix bugs promptly and adjust our implementation plans in time. Continuous small-step iterations help us steadily push the campus sports project forward. |
+| Xu Boyu | Backend Development | Everyone's role is well-defined and our communication is direct; building the initial prototype first and then iterating through feedback gives the whole project a strong sense of direction. |
+| Cai Yaohua | Algorithm | Team members have their respective roles. We prioritize delivering the minimum viable prototype and keep refining it based on feedback. The project maintains a manageable pace with clear goals and stays on track. |
+| Wang Shaojie | Testing | This team has shown me the power of teamwork. We split tasks clearly, and we always pull together to get through every difficulty. |
+
+**Team summary**: the team kept a clear division of labour and direct communication throughout the assignment. Starting from the shared SRS and the 12-screen prototype, each member owned a screen or a document section, and the testing group verified the flow against the requirements. Iterating on a working prototype instead of a static design gave the team a concrete basis for discussion and reduced the risk before development.
 
 ---
 
