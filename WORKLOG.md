@@ -24,6 +24,7 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-01 | JorgeHUANG7 | 新增/修改 | `assignment4/slides/`、`assignment4/blog/` | 上传作业四 PPT 与 PDF（修复超链接、统一产品名），博客补 PPT 链接 | 作业四 |
 | 2026-11-01 | JorgeHUANG7 | 新增 | `assignment4/evidence/`、`assignment4/blog/` | 上传两张团队非摆拍讨论照并插入博客第 6 章 | 作业四 |
 | 2026-11-01 | JorgeHUANG7 | 修改 | `assignment4/blog/` | 补充队长评价与整体评价 | 作业四 |
 | 2026-11-01 | JorgeHUANG7 | 修改 | `assignment4/blog/` | 补充第 6 章团队感受与成员评价（12 人评论 + 团队总结） | 作业四 |
