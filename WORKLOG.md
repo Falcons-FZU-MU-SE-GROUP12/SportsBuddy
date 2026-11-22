@@ -24,6 +24,10 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-22 | 3054664804 | 新增 | `src/backend/tests/test_issue10_persistence_acceptance.py` | 为 Issue #10 增加持久化验收测试 | 作业五 |
+| 2026-11-22 | Lip666-dev | 新增 | `src/backend/tests/test_issue7_activity_list_acceptance.py` | 为 Issue #7 增加活动列表验收测试 | 作业五 |
+| 2026-11-22 | zhangjt123 | 新增 | `src/backend/tests/test_issue6_create_activity_acceptance.py` | 为 Issue #6 增加发起活动验收测试 | 作业五 |
+| 2026-11-22 | snowball6657 | 新增 | `src/backend/tests/test_issue4_auth_acceptance.py` | 为 Issue #4 增加认证验收测试 | 作业五 |
 | 2026-11-22 | L1n2iJVn | 新增/修改 | `src/frontend/frontend/`（`src/api/reviews.js`、`src/api/http.js`、`src/main.js`、`src/router.js`、`src/store.js`、`src/pages/user.js`、`src/pages/me.js`、`assets/css/app.css`、`index.html`）、`src/frontend/tools/`（`verify.mjs`、`shot5.mjs`、`seed-demo.mjs`）、`src/frontend/README.md`、`docs/issue5-profile.md`、`docs/shots/` | 完成 Issue #5「User profile page」：个人主页接真实 FastAPI 后端（`?mock=0` 运行时开关），新增 `withReviewers()` 补评价人昵称（后端 `ReviewOut` 只有 `reviewer_id`），修复页面注册丢路由参数导致 `#/user/1` 请求 `/users/NaN` 的 bug、`review` 路由 id 丢失、评价分布条不显示的 CSS 问题；新增造数脚本与无头 Edge 截图脚本，`node tools/verify.mjs` 112 项全部通过，产出 390px 与桌面运行截图及验收文档 | 作业五 |
 | 2026-11-22 | Betty-bear86 | 重构 | `src/backend/`（`ruff.toml`、`db.py`、`models.py`、`routers.py`、`services.py`、`tests/`、`README.md`、`requirements-dev.txt`） | 按作业五代码规范统一后端风格：新增 ruff 配置（py311、100 字符行宽），修复导入排序、未使用导入、UTC 别名、超长行、未使用解包变量等；`ruff check .` 0 错误、34 项测试全部通过 | 作业五 |
 | 2026-11-22 | Betty-bear86 | 修改 | `src/backend/config.py`、`src/backend/services.py`、`src/backend/main.py`、`src/backend/tests/test_flow.py`、`src/backend/README.md` | 按 Issue #15 实现信用分规则：初始 80、签到 +2、爽约 -10、临近取消 -2、范围 [0,100]；签到成功即加分，考勤确认不重复计分，补上下限测试，34 项测试全通过 | 作业五 |
