@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 启动引导
  * ---------------------------------------------------------------------------
  * 顺序很重要：
@@ -16,17 +16,17 @@ import { mount } from './shared/ui.js'
 
 /* ---------------- 页面注册（按需 import，天然懒加载） ---------------- */
 
-register('login', async () => (await import('./pages/login.js')).create())
-register('discover', async () => (await import('./pages/discover.js')).create())
-register('activities', async () => (await import('./pages/activities.js')).create())
-register('activity', async () => (await import('./pages/activity.js')).create())
-register('activity-new', async () => (await import('./pages/activity-new.js')).create())
-register('activity-manage', async () => (await import('./pages/activity-manage.js')).create())
-register('checkin', async () => (await import('./pages/checkin.js')).create())
-register('review', async () => (await import('./pages/review.js')).create())
-register('user', async () => (await import('./pages/user.js')).create())
-register('manage', async () => (await import('./pages/manage.js')).create())
-register('me', async () => (await import('./pages/me.js')).create())
+register('login', async (params) => (await import('./pages/login.js')).create(params))
+register('discover', async (params) => (await import('./pages/discover.js')).create(params))
+register('activities', async (params) => (await import('./pages/activities.js')).create(params))
+register('activity', async (params) => (await import('./pages/activity.js')).create(params))
+register('activity-new', async (params) => (await import('./pages/activity-new.js')).create(params))
+register('activity-manage', async (params) => (await import('./pages/activity-manage.js')).create(params))
+register('checkin', async (params) => (await import('./pages/checkin.js')).create(params))
+register('review', async (params) => (await import('./pages/review.js')).create(params))
+register('user', async (params) => (await import('./pages/user.js')).create(params))
+register('manage', async (params) => (await import('./pages/manage.js')).create(params))
+register('me', async (params) => (await import('./pages/me.js')).create(params))
 
 /* ---------------- 启动 ---------------- */
 
@@ -85,3 +85,4 @@ bootstrap().catch((err) => {
     </main>`
   console.error(err)
 })
+

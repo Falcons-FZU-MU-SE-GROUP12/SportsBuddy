@@ -230,13 +230,50 @@ python tools/render-prototype-jpg.py --scale=3       # 提高分辨率（默认 
 
 ---
 
-## 五、自检与再生成
+## 四点五、接真实后端联调（Issue #5 个人主页）
 
-这台机器上没有可用的无头浏览器（沙盒禁止 Chromium 的进程间通信），
-所以"界面是否正确"用**程序化校验**兜底，不是靠肉眼：
+Alpha Sprint 的 #5「个人主页」已经把前端接到了真实后端上跑通，并留下了运行截图。
+想自己复现，按下面三步来（都在 `src/` 目录下执行）：
 
 ```powershell
-node tools/verify.mjs                 # 99 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析
+# 1) 起后端（FastAPI + SQLite，首次启动自动建表并写入 10 种运动）
+cd src/backend
+py -m pip install -r requirements.txt
+py -m uvicorn main:app --port 8000
+
+# 2) 另开一个终端，起前端静态服务
+cd src/frontend
+node tools/server.mjs            # http://127.0.0.1:5178/frontend/
+
+# 3) 造一份演示数据（4 个用户 / 3 场活动 / 4 条评价），空库时执行
+node tools/seed-demo.mjs
+```
+
+然后**不用改任何源码**，直接在地址后面加 `?mock=0` 就会走真实后端：
+
+```text
+http://127.0.0.1:5178/frontend/?mock=0#/user/1      别人的主页（匿名可看）
+http://127.0.0.1:5178/frontend/?mock=0#/me          我的主页（需要先登录）
+```
+
+| 地址栏参数 | 作用 |
+|---|---|
+| `?mock=0` | 本次打开用真实后端（优先级高于 `index.html` 里的 `useMock`） |
+| `?mock=1` | 强制回到离线示意数据，用于对比界面 |
+| `?api=http://192.168.1.9:8000` | 临时换后端地址，不重启服务 |
+
+`tools/seed-demo.mjs` 会把演示账号的 token 写进 `tools/seed5.json`，
+截图和接口自测可以直接复用。个人主页的验收对照表、截图与自测结果见
+[`docs/issue5-profile.md`](../../docs/issue5-profile.md)。
+
+---
+
+## 五、自检与再生成
+
+"界面是否正确"用**程序化校验**兜底，不是靠肉眼：
+
+```powershell
+node tools/verify.mjs                 # 112 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析 / #5 个人主页
 node tools/check-links.mjs            # 5 个入口页面的 js/css/svg 引用全部可达
 python tools/render-class-diagram.py  # 由 .mmd 生成 SVG + HTML
 python tools/check-class-diagram.py   # 类图几何校验：文字不溢出、连线不穿框、画布不截断
@@ -321,15 +358,15 @@ E. 一句话找局解析 ················· 14 项通过
 
 ## 八、已知限制（如实说明）
 
-1. **未接真实后端实测**：本机没有外网（`curl` 访问 GitHub / npm / Render 全部超时），
-   所以所有验证都跑在内置 mock 上。接口路径、参数、字段、状态码均严格对照《前端对接文档》，
-   但"真实后端联调"这一步没做过 —— 这是环境限制，不是取舍。
-2. **原型图是"重绘"而非"截图"**：沙盒禁止 Chromium 的进程间通信
-   （`platform_channel.cc: Check failed`），Edge 无头模式起不来，所以拿不到真实网页截图。
-   现在的 `out/prototype-jpg/` 是用 Pillow 按同一套设计令牌与 CSS 尺寸**重画**的，
-   因此**不是浏览器渲染的像素级还原**：字体回退到微软雅黑、个别 emoji 用几何图形代替
-   （如定位图钉）、长文本换行位置可能与浏览器略有差异。
-   要看真实的浏览器渲染效果，用 `prototype/screens.html`（可交互、可当场演示）。
+1. **真实后端只联调了本地实例**：2026-11-22 已把前端接到本地 FastAPI（`127.0.0.1:8000`）
+   上跑通登录、个人主页、评价列表，并用无头 Edge 留下运行截图（见 `docs/shots/`）。
+   公网 Render 实例和多人并发场景还没测过；其它页面（发起活动、签到、评价提交）
+   目前仍以内置 mock 自测为主。
+2. **原型图是"重绘"而非"截图"**：`out/prototype-jpg/` 是用 Pillow 按同一套设计令牌与 CSS
+   尺寸**重画**的，因此**不是浏览器渲染的像素级还原**：字体回退到微软雅黑、
+   个别 emoji 用几何图形代替（如定位图钉）、长文本换行位置可能与浏览器略有差异。
+   要看真实的浏览器渲染效果，用 `prototype/screens.html`（可交互、可当场演示），
+   或者看 `docs/shots/` 里由 `tools/shot5.mjs` 直接截下来的真实页面。
 3. **演示用数据是示意数据**：`frontend/src/fixtures/index.js` 里的 4 个用户、9 场活动、
    5 条评价全部是编的，不是真实用户信息。
 4. **离线 mock 的数据库在内存里**：刷新页面即还原。要持久化就接真实后端。

@@ -7,7 +7,7 @@
  * 守卫规则：ROUTES[name].auth === true 的页面在未登录时跳转到 #/login。
  */
 
-import { ROUTES, parseHash, store } from './store.js'
+import { ROUTES, href, parseHash, store } from './store.js'
 import { clearFlash, flash } from './store.js'
 import { setPage, setShell } from './shared/ui.js'
 
@@ -20,7 +20,7 @@ export function register(name, loader) {
 }
 
 export function navigate(name, params = {}) {
-  const path = params.id != null ? `#/${name}/${params.id}` : `#/${name}`
+  const path = href(name, params)
   if (location.hash === path) handleRoute()
   else location.hash = path
 }

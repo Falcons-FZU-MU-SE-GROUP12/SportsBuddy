@@ -24,3 +24,7 @@ __pycache__/
 # Java
 target/
 *.class
+
+# Local demo artefacts
+src/frontend/tools/seed5.json
+src/backend/data/*.db

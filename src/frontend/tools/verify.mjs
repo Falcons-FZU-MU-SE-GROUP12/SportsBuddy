@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 自检脚本（不需要浏览器）
  * ---------------------------------------------------------------------------
  * 这台机器上没有可用的无头浏览器（沙盒禁止 Chromium 的进程间通信），
@@ -495,6 +495,91 @@ if (matchRes.items[0]) {
 }
 
 /* ===================================================================== */
+/* F. Issue #5 个人主页验收                                              */
+/* ===================================================================== */
+
+section('F. Issue #5 个人主页验收（昵称 / 信用分 / 完成与爽约次数）')
+
+resetMock()
+tokenStore.set((await api.login('linhao', 'secret123')).access_token)
+const meProfile = await api.getMe()
+setSession(meProfile)
+
+const { withReviewers } = await import('../frontend/src/api/reviews.js')
+
+/** 渲染一个页面模块并返回 HTML。 */
+async function renderProfilePage(modPath, params = {}) {
+  const mod = await import(modPath)
+  const page = mod.create(params)
+  if (typeof page.load === 'function') await page.load()
+  return page.view()
+}
+
+const otherId = 2
+const otherUser = await api.getUser(otherId)
+const userHtml = await renderProfilePage('../frontend/src/pages/user.js', { id: String(otherId) })
+
+check('他人主页渲染昵称', userHtml.includes(otherUser.nickname), otherUser.nickname)
+check(
+  '他人主页显示信用分',
+  userHtml.includes('信用分') && userHtml.includes(`>${otherUser.reliability_score}<`),
+  `信用分 ${otherUser.reliability_score}`
+)
+check(
+  '他人主页显示完成次数',
+  userHtml.includes('完成次数') && userHtml.includes(`>${otherUser.completed_count}<`),
+  `完成次数 ${otherUser.completed_count}`
+)
+check(
+  '他人主页显示爽约次数',
+  userHtml.includes('爽约次数') && userHtml.includes(`>${otherUser.no_show_count}<`),
+  `爽约次数 ${otherUser.no_show_count}`
+)
+check(
+  '他人主页显示评价均分',
+  otherUser.review_average == null || userHtml.includes(`${otherUser.review_average} 分`),
+  `均分 ${otherUser.review_average}`
+)
+
+const meHtml = await renderProfilePage('../frontend/src/pages/me.js')
+check('「我的」页渲染昵称', meHtml.includes(meProfile.nickname), meProfile.nickname)
+check('「我的」页显示信用分', meHtml.includes(`>${meProfile.reliability_score}<`), `信用分 ${meProfile.reliability_score}`)
+check(
+  '「我的」页显示完成次数与爽约次数',
+  meHtml.includes('完成次数') && meHtml.includes('爽约次数')
+)
+check(
+  '「我的」页显示评价均分',
+  meProfile.review_average == null || meHtml.includes(String(meProfile.review_average)),
+  `均分 ${meProfile.review_average}`
+)
+
+// 真实后端的 ReviewOut 只有 reviewer_id（没有嵌套 reviewer），这里模拟那种结构
+const reviewedId = (await api.getUserReviews(1)).length ? 1 : otherId
+const rawReviews = await api.getUserReviews(reviewedId)
+const stripped = rawReviews.map((r) => {
+  const { reviewer, ...rest } = r
+  return rest
+})
+const hydrated = await withReviewers(stripped)
+check(
+  '评价只有 reviewer_id 时能补出评价人昵称',
+  hydrated.length > 0 && hydrated.every((r) => r.reviewer?.nickname),
+  JSON.stringify(hydrated.map((r) => r.reviewer?.nickname ?? null))
+)
+check(
+  '补全后的评价人昵称与用户资料一致',
+  hydrated.every((r) => r.reviewer?.nickname === rawReviews.find((x) => x.id === r.id)?.reviewer?.nickname)
+)
+
+const degraded = await withReviewers([{ id: 9001, reviewer_id: 999999, score: 5, tags: [], comment: '', created_at: '' }])
+check('补不到评价人时降级为 null，不抛错', degraded[0].reviewer === null, JSON.stringify(degraded[0].reviewer))
+
+const { readFileSync } = await import('node:fs')
+const cssText = readFileSync(new URL('../frontend/assets/css/app.css', import.meta.url), 'utf8')
+check('样式里有 ≤420px 的窄屏适配规则', /@media\s*\(max-width:\s*420px\)/.test(cssText))
+
+/* ===================================================================== */
 /* 汇总                                                                  */
 /* ===================================================================== */
 
@@ -506,3 +591,5 @@ if (fail === 0) {
   for (const f of failures) console.log(`  \x1b[31m·\x1b[0m ${f.name}\n    ${f.detail}`)
 }
 process.exit(fail === 0 ? 0 : 1)
+
+

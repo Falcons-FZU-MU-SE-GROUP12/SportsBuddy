@@ -16,12 +16,33 @@ import { mockFetch } from './mock.js'
 export const TOKEN_KEY = 'sportmate.token'
 
 /**
+ * 读地址栏里的运行时开关。
+ *
+ * 演示 / 验收时不想改源码：直接加查询参数即可。
+ *   ?mock=0                      接真实后端
+ *   ?mock=1                      强制回离线数据（对比 mock 界面用）
+ *   ?api=http://192.168.1.9:8000 临时改后端地址
+ * 查询参数只影响当前这一次打开，刷新或去掉参数即恢复 index.html 里的配置。
+ */
+function searchParam(name) {
+  if (typeof location === 'undefined') return null
+  try {
+    return new URLSearchParams(location.search).get(name)
+  } catch {
+    return null
+  }
+}
+
+/**
  * 后端地址解析顺序：
- *   1. 构建时注入的 window.__SPORTMATE_CONFIG__.apiBaseUrl
- *   2. 当前站点同源（配合反向代理）
- *   3. 本地后端
+ *   1. 地址栏 ?api= 临时指定
+ *   2. 构建时注入的 window.__SPORTMATE_CONFIG__.apiBaseUrl
+ *   3. 当前站点同源（配合反向代理）
+ *   4. 本地后端
  */
 function resolveBaseUrl() {
+  const fromQuery = searchParam('api')
+  if (fromQuery) return fromQuery.replace(/\/+$/, '')
   const injected = typeof window !== 'undefined' ? window.__SPORTMATE_CONFIG__?.apiBaseUrl : null
   if (injected) return String(injected).replace(/\/+$/, '')
   return 'http://127.0.0.1:8000'
@@ -29,9 +50,19 @@ function resolveBaseUrl() {
 
 export const BASE_URL = resolveBaseUrl()
 
-/** 是否使用内置离线数据。默认开，保证"打开就能看"。 */
-export const USE_MOCK =
-  (typeof window !== 'undefined' ? window.__SPORTMATE_CONFIG__?.useMock : null) ?? true
+/**
+ * 是否使用内置离线数据。默认开，保证"打开就能看"。
+ *
+ * 优先级：地址栏 ?mock=0 / ?mock=1 > index.html 的 useMock > 默认 true。
+ */
+function resolveUseMock() {
+  const fromQuery = searchParam('mock')
+  if (fromQuery === '0' || fromQuery === 'false') return false
+  if (fromQuery === '1' || fromQuery === 'true') return true
+  return (typeof window !== 'undefined' ? window.__SPORTMATE_CONFIG__?.useMock : null) ?? true
+}
+
+export const USE_MOCK = resolveUseMock()
 
 /* ---------------- token ---------------- */
 
