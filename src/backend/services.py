@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 import config
 import security
+from db import utcnow
 from models import (
     Activity,
     ActivityStatus,
@@ -17,11 +18,9 @@ from models import (
     RegistrationStatus,
     Review,
     SkillLevel,
-    Sport,
     User,
     UserSession,
 )
-from db import utcnow
 from schemas import MatchItem, MatchQuery, MatchReason
 
 
@@ -62,8 +61,8 @@ def ensure_aware_utc(value: datetime) -> datetime:
     being silently compared against local time.
     """
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def refresh_activity_status(activity: Activity) -> Activity:
@@ -789,10 +788,9 @@ def match_activities(
             score += WEIGHT_SKILL * 0.5
 
         # 4. campus
-        if query.campus:
-            if activity.campus == query.campus:
-                score += WEIGHT_CAMPUS
-                reason.campus = True
+        if query.campus and activity.campus == query.campus:
+            score += WEIGHT_CAMPUS
+            reason.campus = True
 
         # 5. distance
         if (

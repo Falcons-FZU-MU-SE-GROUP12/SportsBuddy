@@ -1,0 +1,20 @@
+# Ruff configuration for the FastAPI backend.
+# Mirrors the backend rules in the Assignment 5 code standard:
+# PEP 8, 4-space indentation and a 100-character line limit.
+
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+ignore = [
+    # FastAPI's dependency injection uses function calls in argument defaults.
+    "B008",
+    # User-visible strings and comments are Chinese and use full-width punctuation.
+    "RUF001",
+    "RUF003",
+    # SQLAlchemy models keep ``str, Enum`` for compatibility with the 3.11 runtime;
+    # migrating to StrEnum changes ``str(enum)`` semantics and is out of scope here.
+    "UP042",
+]

@@ -77,10 +77,10 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
-    organized: Mapped[list["Activity"]] = relationship(
+    organized: Mapped[list[Activity]] = relationship(
         back_populates="organizer", cascade="all, delete-orphan"
     )
-    registrations: Mapped[list["Registration"]] = relationship(
+    registrations: Mapped[list[Registration]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -119,7 +119,9 @@ class Activity(Base):
     __tablename__ = "activities"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    organizer_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    organizer_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
 
     title: Mapped[str] = mapped_column(String(80))
     sport: Mapped[str] = mapped_column(String(32), index=True)
@@ -148,12 +150,12 @@ class Activity(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     organizer: Mapped[User] = relationship(back_populates="organized")
-    registrations: Mapped[list["Registration"]] = relationship(
+    registrations: Mapped[list[Registration]] = relationship(
         back_populates="activity", cascade="all, delete-orphan"
     )
 
     @property
-    def active_registrations(self) -> list["Registration"]:
+    def active_registrations(self) -> list[Registration]:
         """Registrations that still occupy a slot."""
         return [
             r

@@ -46,6 +46,14 @@ py -m pytest -q
 
 34 个测试覆盖完整业务闭环，包括防爽约、签到围栏、评价权限、匹配排序、信用分上下限。
 
+代码规范检查：
+
+```bash
+py -m ruff check .
+```
+
+配置见 [`ruff.toml`](ruff.toml)：PEP 8、4 空格缩进、100 字符行宽、Python 3.11。
+
 ---
 
 ## 3. 文件结构
@@ -67,8 +75,9 @@ sportmate-backend/
 │   ├── test_flow.py     # 端到端业务流程测试
 │   └── test_startup.py  # 启动路径与路由注册回归
 ├── push-to-github.bat   # 一键推送到 GitHub（含常见报错指引）
+├── ruff.toml            # 后端代码规范检查配置（PEP 8 / 100 字符）
 ├── requirements.txt     # 运行期依赖（4 个）
-└── requirements-dev.txt # 测试依赖
+└── requirements-dev.txt # 测试与 lint 依赖
 ```
 
 ### 数据模型

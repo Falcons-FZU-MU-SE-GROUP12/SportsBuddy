@@ -144,7 +144,7 @@ def test_activity_time_window_is_validated(client, register):
 # --------------------------------------------------------------------------- #
 def test_join_full_flow_and_duplicate_join(client, register, make_activity):
     organizer_headers, _ = register("org2")
-    joiner_headers, joiner = register("joiner")
+    joiner_headers, _joiner = register("joiner")
     activity = make_activity(organizer_headers, capacity=2)
 
     joined = client.post(f"/activities/{activity['id']}/join", headers=joiner_headers,
@@ -187,7 +187,7 @@ def test_activity_becomes_full_at_capacity(client, register, make_activity):
 
 def test_cancelling_before_deadline_does_not_hurt_score(client, register, make_activity):
     organizer_headers, _ = register("org4")
-    joiner_headers, joiner = register("early_leaver")
+    joiner_headers, _joiner = register("early_leaver")
     activity = make_activity(organizer_headers, hours=48)
 
     client.post(f"/activities/{activity['id']}/join", headers=joiner_headers)
@@ -223,7 +223,9 @@ def test_checkin_with_organizer_code(client, register, make_activity):
     activity = make_activity(organizer_headers)
 
     client.post(f"/activities/{activity['id']}/join", headers=joiner_headers)
-    code = client.get(f"/activities/{activity['id']}", headers=organizer_headers).json()["checkin_code"]
+    code = client.get(
+        f"/activities/{activity['id']}", headers=organizer_headers
+    ).json()["checkin_code"]
 
     wrong = client.post(
         f"/activities/{activity['id']}/checkin", headers=joiner_headers, json={"code": "0000"}
@@ -306,12 +308,12 @@ def _finished_activity_with_two_players(client, register, make_activity, prefix:
 def test_attendance_marks_no_show_and_recalculates_scores(client, register, make_activity):
     (
         organizer_headers,
-        organizer,
+        _organizer,
         a_headers,
         a,
         b_headers,
         b,
-        activity,
+        _activity,
         result,
     ) = _finished_activity_with_two_players(client, register, make_activity, "att")
 
@@ -344,14 +346,14 @@ def test_only_organizer_can_record_attendance(client, register, make_activity):
 
 def test_review_closes_the_loop(client, register, make_activity):
     (
-        organizer_headers,
+        _organizer_headers,
         organizer,
         a_headers,
-        a,
+        _a,
         b_headers,
-        b,
+        _b,
         activity,
-        result,
+        _result,
     ) = _finished_activity_with_two_players(client, register, make_activity, "rev")
 
     # Attending player A reviews the organiser.
@@ -390,7 +392,7 @@ def test_review_closes_the_loop(client, register, make_activity):
 
 def test_review_requires_finished_activity(client, register, make_activity):
     organizer_headers, organizer = register("rev_org2")
-    joiner_headers, joiner = register("rev_joiner2")
+    joiner_headers, _joiner = register("rev_joiner2")
     activity = make_activity(organizer_headers)
     client.post(f"/activities/{activity['id']}/join", headers=joiner_headers)
 
@@ -405,7 +407,7 @@ def test_review_requires_finished_activity(client, register, make_activity):
 
 def test_low_reliability_blocks_joining_new_activities(client, register, make_activity):
     organizer_headers, _ = register("block_org")
-    flaky_headers, flaky = register("flaky_user")
+    flaky_headers, _flaky = register("flaky_user")
 
     # Two no-shows: 80 -> 70 -> 60, not below the threshold yet.
     for index in range(2):

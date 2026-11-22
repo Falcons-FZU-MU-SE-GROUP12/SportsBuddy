@@ -7,7 +7,7 @@ can run locally, in Docker and on a PaaS such as Render.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -20,7 +20,7 @@ def now_utc() -> datetime:
     what a client sends when it omits an offset) raises TypeError instead of
     silently producing a wrong answer, which is the failure mode we want.
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 # SQLite by default: zero-config, good enough for a campus pilot.
 DATABASE_URL: str = os.getenv(
