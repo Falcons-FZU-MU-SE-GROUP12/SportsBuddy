@@ -10,8 +10,9 @@ from sqlalchemy.orm import Session
 
 import converters
 import services
+from db import get_db
 from deps import extract_token, get_current_user
-from models import Activity, ActivityStatus, RegistrationStatus, SkillLevel, Sport, User
+from models import ActivityStatus, SkillLevel, Sport, User
 from schemas import (
     ActivityCreate,
     ActivityDetail,
@@ -21,9 +22,7 @@ from schemas import (
     CheckinRequest,
     CheckinResult,
     JoinRequest,
-    MatchItem,
     MatchQuery,
-    MatchReason,
     MatchResponse,
     RegistrationOut,
     ReviewCreate,
@@ -36,7 +35,6 @@ from schemas import (
     UserRegister,
     UserUpdate,
 )
-from db import get_db
 
 router = APIRouter()
 
@@ -99,7 +97,12 @@ def update_me(
     return user
 
 
-@router.get("/users/{user_id}", response_model=UserProfile, summary="查看他人公开资料", tags=["用户"])
+@router.get(
+    "/users/{user_id}",
+    response_model=UserProfile,
+    summary="查看他人公开资料",
+    tags=["用户"],
+)
 def read_user(user_id: int, db: Session = Depends(get_db)) -> UserProfile:
     user = db.get(User, user_id)
     if not user:
@@ -373,8 +376,9 @@ def match_by_sentence(
     # If the sentence matched nothing, fall back to the student's own profile
     # so the endpoint never returns a dead end.
     if not items and (not query.sport or not query.campus):
+        favorite = user.favorite_sports.split(",")[0] if user.favorite_sports else None
         fallback = MatchQuery(
-            sport=query.sport or (user.favorite_sports.split(",")[0] if user.favorite_sports else None),
+            sport=query.sport or favorite,
             campus=query.campus or user.campus,
             skill_level=query.skill_level or user.skill_level,
             limit=limit,

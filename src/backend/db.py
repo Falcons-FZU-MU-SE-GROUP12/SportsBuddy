@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Iterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import create_engine
@@ -60,11 +61,9 @@ def _ensure_sqlite_directory(url: str) -> None:
     parent = sqlite_parent_dir(url)
     if parent is None:
         return
-    try:
+    # e.g. a read-only mount: let the engine raise a clear error later.
+    with contextlib.suppress(OSError):
         parent.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        # e.g. a read-only mount: let the engine raise a clear error later.
-        pass
 
 
 _ensure_sqlite_directory(config.DATABASE_URL)
@@ -81,7 +80,7 @@ def utcnow() -> datetime:
     values, and clients are expected to send ISO-8601 timestamps with an
     explicit offset (which pydantic parses into aware datetimes).
     """
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def get_db() -> Iterator[Session]:

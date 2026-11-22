@@ -103,7 +103,7 @@ class ActivityCreate(BaseModel):
     fee: int = Field(default=0, ge=0, le=1000000)
 
     @model_validator(mode="after")
-    def _check_window(self) -> "ActivityCreate":
+    def _check_window(self) -> ActivityCreate:
         if self.end_time <= self.start_time:
             raise ValueError("结束时间必须晚于开始时间")
         return self
@@ -204,7 +204,7 @@ class CheckinRequest(BaseModel):
     longitude: float | None = Field(default=None, ge=-180, le=180)
 
     @model_validator(mode="after")
-    def _need_one_method(self) -> "CheckinRequest":
+    def _need_one_method(self) -> CheckinRequest:
         if not self.code and (self.latitude is None or self.longitude is None):
             raise ValueError("必须提供签到码，或同时提供经纬度")
         return self

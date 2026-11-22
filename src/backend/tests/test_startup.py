@@ -10,9 +10,6 @@ seeds the sport catalogue); the URL parsing that drives it is covered below.
 
 from __future__ import annotations
 
-import os
-import shutil
-import tempfile
 from pathlib import Path
 
 import db as db_module

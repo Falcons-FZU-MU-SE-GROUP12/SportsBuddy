@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -71,7 +71,7 @@ def client() -> TestClient:
 # --------------------------------------------------------------------------- #
 def utc_now() -> datetime:
     """Timezone-aware UTC, matching the convention documented in db.utcnow()."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def future(hours: float = 24, minutes: float = 0) -> datetime:
