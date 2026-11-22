@@ -157,17 +157,27 @@ def revoke_token(db: Session, raw_token: str) -> None:
 # --------------------------------------------------------------------------- #
 # reliability
 # --------------------------------------------------------------------------- #
-def apply_score(db: Session, user: User, delta: int) -> int:
-    user.reliability_score = clamp_score(user.reliability_score + delta)
-    return user.reliability_score
-
-
 def recalculate_reliability(db: Session, user: User) -> int:
     """Recompute the score from the user's whole participation history.
 
     Deterministic, so it can be re-run at any time to repair drift:
-        score = initial + 2*attended - 5*late_cancels - 15*no_shows
+        score = 80 + 2*check_ins - 2*late_cancels - 10*no_shows, clamped [0, 100]
+
+    A registration counts as a check-in from the moment the user checks in and
+    keeps counting after the organiser confirms attendance. That way the +2 is
+    granted exactly once and is not lost when ``checked_in`` becomes ``attended``.
     """
+    check_ins = (
+        db.scalar(
+            select(func.count(Registration.id)).where(
+                Registration.user_id == user.id,
+                Registration.status.in_(
+                    (RegistrationStatus.checked_in, RegistrationStatus.attended)
+                ),
+            )
+        )
+        or 0
+    )
     attended = (
         db.scalar(
             select(func.count(Registration.id)).where(
@@ -197,11 +207,12 @@ def recalculate_reliability(db: Session, user: User) -> int:
         or 0
     )
 
+    # ``completed_count`` tracks confirmed attendance, not raw check-ins.
     user.completed_count = attended
     user.no_show_count = no_shows
     user.reliability_score = clamp_score(
         config.RELIABILITY_INITIAL
-        + config.RELIABILITY_COMPLETED_DELTA * attended
+        + config.RELIABILITY_COMPLETED_DELTA * check_ins
         + config.RELIABILITY_LATE_CANCEL_DELTA * late_cancels
         + config.RELIABILITY_NO_SHOW_DELTA * no_shows
     )
@@ -453,8 +464,9 @@ def leave_activity(db: Session, activity: Activity, user: User) -> Registration:
     registration.is_late_cancel = within_window
     db.flush()
 
-    if within_window:
-        apply_score(db, user, config.RELIABILITY_LATE_CANCEL_DELTA)
+    # Recompute rather than applying a delta: this keeps an early cancellation
+    # neutral and correctly revokes the +2 if a checked-in user backs out.
+    recalculate_reliability(db, user)
 
     refresh_activity_status(activity)
     db.commit()
@@ -512,6 +524,10 @@ def check_in(
     db.commit()
     db.refresh(registration)
 
+    # Check-in earns the +2 immediately (issue #15); the recompute reads the
+    # checked_in status that was just persisted.
+    recalculate_reliability(db, user)
+
     message = "签到成功" + (f"（距离 {distance:.0f} 米）" if distance is not None else "")
     return registration, method, distance, message  # type: ignore[return-value]
 
@@ -549,7 +565,6 @@ def record_attendance(
     for user_id, registration in registrations.items():
         user = db.get(User, user_id)
         assert user is not None
-        before = user.reliability_score
 
         if user_id in attended_set:
             registration.status = RegistrationStatus.attended
@@ -593,8 +608,10 @@ def record_attendance(
             else:
                 organizer_registration.status = RegistrationStatus.attended
 
-            organizer.completed_count += 1
-            apply_score(db, organizer, config.RELIABILITY_COMPLETED_DELTA)
+            # The new/updated row must be visible to the COUNT inside the
+            # recompute, so flush it before recalculating.
+            db.flush()
+            recalculate_reliability(db, organizer)
             if organizer.reliability_score != before:
                 changes[str(organizer.id)] = organizer.reliability_score - before
 

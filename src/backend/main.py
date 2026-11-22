@@ -146,9 +146,10 @@ def root() -> dict:
         },
         "reliability_rules": {
             "初始分": config.RELIABILITY_INITIAL,
-            "完成一次活动": f"+{config.RELIABILITY_COMPLETED_DELTA}",
+            "签到": f"+{config.RELIABILITY_COMPLETED_DELTA}",
             "临近开始才取消": f"{config.RELIABILITY_LATE_CANCEL_DELTA}",
             "爽约": f"{config.RELIABILITY_NO_SHOW_DELTA}",
+            "分数范围": f"[{config.RELIABILITY_MIN}, {config.RELIABILITY_MAX}]",
             "低于该分数禁止报名": config.RELIABILITY_JOIN_THRESHOLD,
         },
     }

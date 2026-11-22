@@ -36,13 +36,14 @@ APP_VERSION: str = "0.1.0"
 # once, at login time.
 TOKEN_TTL_DAYS: int = int(os.getenv("SPORTMATE_TOKEN_TTL_DAYS", "30"))
 
-# Reliability score rules. The score starts at 100 and is clamped to [0, 100].
-RELIABILITY_INITIAL: int = 100
+# Reliability score rules (Alpha Sprint issue #15). A new account starts at 80;
+# the score is always clamped to [0, 100].
+RELIABILITY_INITIAL: int = 80
 RELIABILITY_MIN: int = 0
 RELIABILITY_MAX: int = 100
-RELIABILITY_COMPLETED_DELTA: int = 2
-RELIABILITY_LATE_CANCEL_DELTA: int = -5
-RELIABILITY_NO_SHOW_DELTA: int = -15
+RELIABILITY_COMPLETED_DELTA: int = 2   # successfully checking in
+RELIABILITY_LATE_CANCEL_DELTA: int = -2
+RELIABILITY_NO_SHOW_DELTA: int = -10
 
 # A user below this score is temporarily blocked from joining new activities.
 RELIABILITY_JOIN_THRESHOLD: int = 60

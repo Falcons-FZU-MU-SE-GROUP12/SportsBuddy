@@ -1,4 +1,4 @@
-﻿"""End-to-end tests for the sports matchmaking loop.
+"""End-to-end tests for the sports matchmaking loop.
 
 Covers: register -> create activity -> join -> check-in -> attendance -> review,
 plus the anti-flake reliability rules and the matching engine.
@@ -34,7 +34,7 @@ def test_register_login_and_me(client):
     body = me.json()
     assert body["nickname"] == "小爱"
     assert body["favorite_sports"] == ["篮球", "跑步"]
-    assert body["reliability_score"] == 100
+    assert body["reliability_score"] == 80  # Issue #15: new accounts start at 80
     assert body["review_count"] == 0
 
     login = client.post("/auth/login", json={"username": "alice", "password": "secret123"})
@@ -197,7 +197,7 @@ def test_cancelling_before_deadline_does_not_hurt_score(client, register, make_a
     assert left.json()["is_late_cancel"] is False
 
     me = client.get("/me", headers=joiner_headers).json()
-    assert me["reliability_score"] == 100
+    assert me["reliability_score"] == 80
 
 
 def test_late_cancel_costs_reliability(client, register, make_activity):
@@ -211,7 +211,7 @@ def test_late_cancel_costs_reliability(client, register, make_activity):
     assert left.json()["is_late_cancel"] is True
 
     me = client.get("/me", headers=joiner_headers).json()
-    assert me["reliability_score"] == 95  # 100 - 5
+    assert me["reliability_score"] == 78  # 80 - 2
 
 
 # --------------------------------------------------------------------------- #
@@ -243,6 +243,9 @@ def test_checkin_with_organizer_code(client, register, make_activity):
         f"/activities/{activity['id']}/checkin", headers=joiner_headers, json={"code": code}
     )
     assert duplicate.status_code == 409
+
+    # Issue #15: a successful check-in adds +2 immediately.
+    assert client.get("/me", headers=joiner_headers).json()["reliability_score"] == 82
 
 
 def test_checkin_requires_proximity_or_code(client, register, make_activity):
@@ -315,9 +318,10 @@ def test_attendance_marks_no_show_and_recalculates_scores(client, register, make
     assert result["attended"] == [a["id"]]
     assert result["no_show"] == [b["id"]]
 
-    assert client.get("/me", headers=a_headers).json()["reliability_score"] == 100
+    # Attendance counts as a completed (checked-in) activity: 80 + 2.
+    assert client.get("/me", headers=a_headers).json()["reliability_score"] == 82
     b_me = client.get("/me", headers=b_headers).json()
-    assert b_me["reliability_score"] == 85  # 100 - 15
+    assert b_me["reliability_score"] == 70  # 80 - 10
     assert b_me["no_show_count"] == 1
     assert b_me["completed_count"] == 0
 
@@ -403,25 +407,61 @@ def test_low_reliability_blocks_joining_new_activities(client, register, make_ac
     organizer_headers, _ = register("block_org")
     flaky_headers, flaky = register("flaky_user")
 
-    # Two no-shows: 100 -> 85 -> 70, still above the threshold.
+    # Two no-shows: 80 -> 70 -> 60, not below the threshold yet.
     for index in range(2):
         activity = make_activity(organizer_headers, title=f"局 {index}")
         client.post(f"/activities/{activity['id']}/join", headers=flaky_headers)
         client.post(
             f"/activities/{activity['id']}/attendance", headers=organizer_headers, json=[]
         )
-    assert client.get("/me", headers=flaky_headers).json()["reliability_score"] == 70
+    assert client.get("/me", headers=flaky_headers).json()["reliability_score"] == 60
 
     # A third no-show drops below 60 and locks the account out of new sign-ups.
     activity = make_activity(organizer_headers, title="第三局")
     client.post(f"/activities/{activity['id']}/join", headers=flaky_headers)
     client.post(f"/activities/{activity['id']}/attendance", headers=organizer_headers, json=[])
-    assert client.get("/me", headers=flaky_headers).json()["reliability_score"] == 55
+    assert client.get("/me", headers=flaky_headers).json()["reliability_score"] == 50
 
     fresh = make_activity(organizer_headers, title="新局")
     blocked = client.post(f"/activities/{fresh['id']}/join", headers=flaky_headers)
     assert blocked.status_code == 403
     assert "信用分" in blocked.json()["detail"]
+
+
+def test_checkin_points_accumulate_and_cap_at_100(client, register, make_activity):
+    """Issue #15: each check-in is +2, and the score never exceeds 100."""
+    organizer_headers, _ = register("cap_org")
+    player_headers, _ = register("cap_player")
+
+    scores: list[int] = []
+    for index in range(11):
+        activity = make_activity(organizer_headers, title=f"签到第 {index} 局")
+        joined = client.post(f"/activities/{activity['id']}/join", headers=player_headers)
+        assert joined.status_code == 201, joined.text
+        code = client.get(
+            f"/activities/{activity['id']}", headers=organizer_headers
+        ).json()["checkin_code"]
+        checked = client.post(
+            f"/activities/{activity['id']}/checkin",
+            headers=player_headers,
+            json={"code": code},
+        )
+        assert checked.status_code == 200, checked.text
+        scores.append(client.get("/me", headers=player_headers).json()["reliability_score"])
+
+    assert scores[0] == 82      # 80 + 2
+    assert scores[9] == 100     # 80 + 2 * 10
+    assert scores[10] == 100    # clamped, not 102
+
+
+def test_score_boundaries_are_clamped_to_0_100():
+    """The same clamp guards both ends of the range."""
+    from services import clamp_score
+
+    assert clamp_score(-100) == 0
+    assert clamp_score(0) == 0
+    assert clamp_score(100) == 100
+    assert clamp_score(250) == 100
 
 
 # --------------------------------------------------------------------------- #
