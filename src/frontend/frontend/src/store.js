@@ -104,14 +104,21 @@ export function parseHash(hash) {
   const params = {}
   if (rest[0]) {
     if (name === 'user') params.id = rest[0]
-    else if (name === 'review') params.id = rest[1] ?? rest[0]
-    else params.id = rest[0]
+    else if (name === 'review') {
+      // #/review/<activityId> 或 #/review/<activityId>/<userId>
+      params.id = rest[0]
+      if (rest[1]) params.userId = rest[1]
+    } else params.id = rest[0]
   }
   return { name, params }
 }
 
 /** 生成 hash 地址。 */
 export function href(name, params = {}) {
-  if (name === 'review') return `#/review/${params.activityId}/${params.userId ?? ''}`
+  if (name === 'review') {
+    return params.userId != null
+      ? `#/review/${params.activityId}/${params.userId}`
+      : `#/review/${params.activityId}`
+  }
   return params.id != null ? `#/${name}/${params.id}` : `#/${name}`
 }

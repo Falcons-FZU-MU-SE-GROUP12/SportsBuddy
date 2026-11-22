@@ -7,6 +7,7 @@
  */
 
 import { api } from '../api/index.js'
+import { withReviewers } from '../api/reviews.js'
 import {
   alert,
   appBar,
@@ -62,7 +63,7 @@ export function create() {
         api.getUserReviews(me.id).catch(() => []),
         api.getMyActivities().catch(() => ({ organized: [], joined: [] })),
       ])
-      state.reviews = reviews ?? []
+      state.reviews = await withReviewers(reviews ?? [])
       state.counts = {
         organized: mine.organized?.length ?? 0,
         joined: mine.joined?.length ?? 0,

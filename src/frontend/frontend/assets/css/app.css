@@ -1124,12 +1124,14 @@ svg {
   color: var(--ink-3);
 }
 .sm-bar__track {
+  display: block;
   height: 6px;
   border-radius: 99px;
   background: var(--surface-2);
   overflow: hidden;
 }
 .sm-bar__fill {
+  display: block;
   height: 100%;
   border-radius: 99px;
   background: #ffb020;
@@ -1168,3 +1170,4 @@ svg {
     margin-top: 0;
   }
 }
+

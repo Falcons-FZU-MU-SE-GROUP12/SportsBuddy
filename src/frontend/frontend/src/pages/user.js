@@ -6,6 +6,7 @@
  */
 
 import { api } from '../api/index.js'
+import { withReviewers } from '../api/reviews.js'
 import { alert, appBar, button, empty, tag } from '../shared/components.js'
 import { esc, fmtDateTime, initial } from '../shared/format.js'
 import { RULES, SKILL_TEXT } from '../shared/domain.js'
@@ -26,7 +27,8 @@ export function create(params = {}) {
     try {
       const [user, reviews] = await Promise.all([api.getUser(id), api.getUserReviews(id)])
       state.user = user
-      state.reviews = reviews ?? []
+      // 真实后端的评价里只有 reviewer_id，这里补上昵称再渲染
+      state.reviews = await withReviewers(reviews ?? [])
     } catch (err) {
       state.error = err?.message ?? '加载失败'
       state.user = null
