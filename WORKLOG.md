@@ -26,7 +26,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 2026-11-22 | Betty-bear86 | 重构 | `src/backend/`（`ruff.toml`、`db.py`、`models.py`、`routers.py`、`services.py`、`tests/`、`README.md`、`requirements-dev.txt`） | 按作业五代码规范统一后端风格：新增 ruff 配置（py311、100 字符行宽），修复导入排序、未使用导入、UTC 别名、超长行、未使用解包变量等；`ruff check .` 0 错误、34 项测试全部通过 | 作业五 |
 | 2026-11-22 | Betty-bear86 | 修改 | `src/backend/config.py`、`src/backend/services.py`、`src/backend/main.py`、`src/backend/tests/test_flow.py`、`src/backend/README.md` | 按 Issue #15 实现信用分规则：初始 80、签到 +2、爽约 -10、临近取消 -2、范围 [0,100]；签到成功即加分，考勤确认不重复计分，补上下限测试，34 项测试全通过 | 作业五 |
-| 2026-11-22 | JorgeHUANG7 | 新增 | GitHub Issues #4–#19 | 创建 Alpha Sprint 16 个任务 Issue（S1–S16，共 60 点），建立提交与日志证据链 | 作业五 |
+| 2026-11-22 | JorgeHUANG7 | 新增 | GitHub Issues #4–#19 | 创建 Alpha Sprint 16 个任务 Issue（S1–S16，共 63 点），建立提交与日志证据链 | 作业五 |
 | 2026-11-01 | JorgeHUANG7 | 修改 | `assignment4/slides/`、`assignment4/blog/` | 墨刀链接统一改为带 screen/canvas 的完整链接，二维码与 PDF 同步更新 | 作业四 |
 | 2026-11-01 | JorgeHUANG7 | 修改 | `assignment4/slides/`、`assignment4/blog/` | 墨刀链接改为干净分享链接并更新二维码；PPT/PDF/博客同步 | 作业四 |
 | 2026-11-01 | JorgeHUANG7 | 新增/修改 | `assignment4/slides/`、`assignment4/blog/` | 上传作业四 PPT 与 PDF（修复超链接、统一产品名），博客补 PPT 链接 | 作业四 |
