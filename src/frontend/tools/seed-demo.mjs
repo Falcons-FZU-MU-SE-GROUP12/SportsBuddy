@@ -1,12 +1,15 @@
 /**
- * Seed the local SportMate backend with data that exercises the profile page
- * (Alpha Sprint issue #5): nickname, credit score, completed / no-show counts.
+ * 给本地后端造一份能验证个人主页（Issue #5）的数据
+ * ---------------------------------------------------------------------------
+ * 造 4 个用户、3 场活动、4 条评价，跑完「报名 → 签到 → 考勤 → 评价」整条链路，
+ * 让主页上的昵称、信用分、完成次数、爽约次数、评价均分都有真实来源。
  *
- * Creates 4 users, 3 activities and 4 reviews, then prints the profile payloads
- * and writes ./seed5.json (user ids + access tokens) for the screenshot script.
+ * 跑完会打印 /me、/users/{id}、评价列表，并把 ids / tokens 写进 ./seed5.json，
+ * 供截图脚本（shot5.mjs）复用。
  *
- * Usage: node tools/seed-demo.mjs
- *   (backend on 127.0.0.1:8000; needs an EMPTY database — delete data/sportmate.db to re-run)
+ * 用法：node tools/seed-demo.mjs
+ *   前提：后端在 127.0.0.1:8000，且数据库为空
+ *         （要重跑先删 src/backend/data/sportmate.db）
  */
 
 const BASE = 'http://127.0.0.1:8000'
@@ -50,7 +53,7 @@ for (const u of users) {
   const tok = await call('/auth/register', { method: 'POST', body: u })
   tokens[u.username] = tok.access_token
   ids[u.username] = (await call('/me', { token: tok.access_token })).id
-  console.log(`registered ${u.username} -> id ${ids[u.username]}`)
+  console.log(`已注册 ${u.username} -> id ${ids[u.username]}`)
 }
 
 async function createActivity(organizer, payload) {
@@ -96,7 +99,7 @@ for (const u of ['linzj', 'liyutong', 'wanghz']) await join(u, a1.id)
 await checkin('linzj', a1.id, a1.code)
 await checkin('liyutong', a1.id, a1.code)
 const att1 = await attendance('chenyu', a1.id, [ids.linzj, ids.liyutong])
-console.log('activity1', a1.id, att1)
+console.log('活动1 考勤完成：', a1.id, att1)
 
 await review('chenyu', a1.id, ids.linzj, 5, ['准时', '配速稳'], '全程没掉队，还帮大家看包。')
 await review('liyutong', a1.id, ids.linzj, 5, ['好相处'], '跑完一起拉伸，聊得很开心。')
@@ -117,7 +120,7 @@ const a2 = await createActivity('liyutong', {
 for (const u of ['linzj', 'chenyu']) await join(u, a2.id)
 await checkin('chenyu', a2.id, a2.code)
 const att2 = await attendance('liyutong', a2.id, [ids.chenyu])
-console.log('activity2', a2.id, att2)
+console.log('活动2 考勤完成：', a2.id, att2)
 
 /* Activity 3: 篮球 3v3 — 林子均 到场，收到两条 4 星评价 */
 const a3 = await createActivity('wanghz', {
@@ -135,7 +138,7 @@ const a3 = await createActivity('wanghz', {
 for (const u of ['linzj', 'chenyu', 'liyutong']) await join(u, a3.id)
 for (const u of ['linzj', 'chenyu', 'liyutong']) await checkin(u, a3.id, a3.code)
 const att3 = await attendance('wanghz', a3.id, [ids.linzj, ids.chenyu, ids.liyutong])
-console.log('activity3', a3.id, att3)
+console.log('活动3 考勤完成：', a3.id, att3)
 
 await review('wanghz', a3.id, ids.linzj, 4, ['防守积极'], '防守很拼，投篮再稳一点就完美了。')
 await review('chenyu', a3.id, ids.linzj, 4, ['团队型'], '传球意识好，下次还一起打。')
@@ -145,11 +148,11 @@ console.log('\n--- 林子均 /me ---')
 console.log(JSON.stringify(me, null, 2))
 
 const target = await call(`/users/${ids.linzj}`)
-console.log('\n--- 林子均 public profile ---')
+console.log('\n--- 林子均 公开主页 ---')
 console.log(JSON.stringify(target, null, 2))
-console.log('\n--- reviews ---')
+console.log('\n--- 收到的评价 ---')
 console.log(JSON.stringify(await call(`/users/${ids.linzj}/reviews`), null, 2))
 
 const { writeFileSync } = await import('node:fs')
 writeFileSync(new URL('./seed5.json', import.meta.url), JSON.stringify({ ids, tokens }, null, 2))
-console.log('\nwrote tools/seed5.json')
+console.log('\n已写入 tools/seed5.json')
