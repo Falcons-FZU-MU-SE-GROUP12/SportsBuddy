@@ -24,6 +24,7 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-22 | JorgeHUANG7 | 新增 | GitHub Issues #4–#19 | 创建 Alpha Sprint 16 个任务 Issue（S1–S16，共 60 点），建立提交与日志证据链 | 作业五 |
 | 2026-11-01 | JorgeHUANG7 | 修改 | `assignment4/slides/`、`assignment4/blog/` | 墨刀链接统一改为带 screen/canvas 的完整链接，二维码与 PDF 同步更新 | 作业四 |
 | 2026-11-01 | JorgeHUANG7 | 修改 | `assignment4/slides/`、`assignment4/blog/` | 墨刀链接改为干净分享链接并更新二维码；PPT/PDF/博客同步 | 作业四 |
 | 2026-11-01 | JorgeHUANG7 | 新增/修改 | `assignment4/slides/`、`assignment4/blog/` | 上传作业四 PPT 与 PDF（修复超链接、统一产品名），博客补 PPT 链接 | 作业四 |
