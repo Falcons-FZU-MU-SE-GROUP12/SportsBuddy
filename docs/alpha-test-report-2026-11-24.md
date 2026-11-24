@@ -81,7 +81,7 @@
 |---|---|
 | 位置 | `POST /activities/{id}/join` |
 | 期望 | 容量为 2 的活动，最多只能有 2 人报名成功 |
-| 实际 | 12 个并发请求中，**7 / 7 / 8 人**报名成功，`joined_count` 分别为 7 / 7 / 8 |
+| 实际 | 12 个并发请求中，**7–9 人（多次复现依次为 7、7、8、9）**报名成功 |
 | 复现率 | **3/3（100%）** |
 | 根因 | `services.py` 中「检查容量 → 写入报名」之间没有唯一约束与事务保护，存在竞态窗口（后端 README §11 已自述该风险） |
 | 影响 | 活动超员、签到码/考勤/评价的人数统计与信用分结算随之错误；高并发下可被用于恶意占位 |
@@ -104,6 +104,8 @@ py evidence/scripts/race_probe.py
 joined_count (实况) : 8
 slots_left   (实况) : 0
 ```
+
+另有一次复现为 9 人入队：返回 9 个 201，joined_count = 9，slots_left = 0。
 
 ### DEF-02 代码规范回归（一般）
 
@@ -138,21 +140,13 @@ user.completed_count = attended
 ## 8. 复现命令汇总
 
 ```powershell
-# 1) 安装依赖
-py -m pip install -r requirements.txt -r requirements-dev.txt
-
-# 2) 全量测试（54 项）
 cd src/backend
-py -m pytest -q
-
-# 3) 信用分规则矩阵（12 项）
-py -m pytest tests/test_issue15_credit_matrix.py -v
-
-# 4) 代码规范
-py -m ruff check .
-
-# 5) 并发超员探针（退出码 1 = 已复现缺陷）
-py <repo>/../evidence/scripts/race_probe.py
+python -m pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest -q
+python -m pytest tests/test_issue15_credit_matrix.py -v
+python -m ruff check .
+python tools/race_probe.py
+# 退出码 1 = 已复现并发超员缺陷 DEF-01
 ```
 
 ## 9. 结论
@@ -164,4 +158,4 @@ py <repo>/../evidence/scripts/race_probe.py
 
 ---
 
-*本报告所有数字均来自 2026-11-24 本机实测，原始日志见 `evidence/logs/`，证据图见 `evidence/测试证据_2026-11-24.png`。*
+*本报告所有数字均来自 2026-11-24 本机实测，证据图见 `docs/shots/alpha-test-evidence-2026-11-24.png`。*

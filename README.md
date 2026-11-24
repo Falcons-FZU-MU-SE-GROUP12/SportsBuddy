@@ -35,10 +35,12 @@ Backend tests run against an in-memory SQLite database, no setup required.
 
 ```bash
 cd src/backend
-py -m pip install -r requirements.txt -r requirements-dev.txt
-py -m pytest -q                 # 54 tests, full business loop
-py -m ruff check .              # code standard check
-py -m tools/race_probe.py       # concurrency probe (exit code 1 = defect reproduced)
+python -m pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest -q                 # 54 tests, full business loop
+python -m ruff check .              # code standard check
+python tools/race_probe.py          # concurrency probe (exit code 1 = defect reproduced)
 ```
+
+> 若你的环境使用 `py` 启动器，把上面的 `python` 换成 `py` 即可。
 
 Test report: [`docs/alpha-test-report-2026-11-24.md`](docs/alpha-test-report-2026-11-24.md)
