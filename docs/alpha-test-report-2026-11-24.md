@@ -90,9 +90,12 @@
 **复现命令**
 
 ```powershell
-py evidence/scripts/race_probe.py
+cd src/backend
+py tools/race_probe.py
 # 退出码 1 = 已复现缺陷；输出会打印 201 数量与 joined_count
 ```
+
+> 测试证据图展示的是 3 次连续复现（7 / 7 / 8）；本节另记录 9、5 两次，合计 5/5。
 
 实测输出：
 
