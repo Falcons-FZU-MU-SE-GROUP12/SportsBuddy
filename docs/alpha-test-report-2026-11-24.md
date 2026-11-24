@@ -158,7 +158,7 @@ python tools/race_probe.py
 
 - Alpha 版本**后端业务闭环可用**：54 项用例全部通过，无阻断性缺陷。
 - **Issue #15 的六条信用分规则全部按设计生效**，含 60 分阈值与 0/100 截断两个边界。
-- **存在 1 个严重并发缺陷（DEF-01）与 1 个规范回归（DEF-02）**，均已提供可复现步骤，建议挂入 Issue #18（bug-fix buffer）。
+- **DEF-02 已修复**（拆行，ruff 恢复 0 错误）；**DEF-01 严重并发缺陷仍待修复**，建议挂入 Issue #18（bug-fix buffer）。
 - 前端 UI 级 E2E 仍是最大空白，对应 Issue #17 的「E2E covers login to review」尚未真正达成。
 
 ---
