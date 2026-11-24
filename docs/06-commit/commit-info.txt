@@ -1,0 +1,79 @@
+建议提交信息（commit message）
+================================
+
+feat(activity-list): wire P-03 to GET /activities with filters (#7)
+
+- stop sending only_available: backend filters after limit/offset, which truncated
+  the list early; filter by slots_left on the client and keep the offset aligned (DEF-01)
+- send naive UTC for date_from/date_to (new format.js toBackendUtc()): aware "+00:00"
+  values are compared as strings by SQLite against naive UTC columns, so the "today"
+  filter dropped the whole day (DEF-02)
+- add a request token (state.reqId) so a slow stale response cannot overwrite the
+  result of a newer filter click (DEF-03)
+- de-duplicate pages by activity id: offset paging can repeat an activity
+- show "keep loading" instead of an empty state when a whole page is filtered out
+- add <=360px guards and title wrapping so the list holds at 320px
+- add verify.mjs section G (28 assertions, 112 -> 140 checks)
+- add tools/seed7.mjs (5 users + 12 activities, 2 full) for reproducible demo data
+- add tools/shot7.mjs (CDP headless screenshot with --eval for interactive states)
+- add tools/snapshot7.mjs for offline 390/320px layout snapshots
+- add package.json ({"type":"module"}, no dependencies) so node tools/verify.mjs runs
+- document acceptance, defects and limits in docs/issue7-activity-list.md
+- add 7 real-backend screenshots in docs/shots/
+
+建议分支：feat/activity-list-issue7
+
+改动文件（21 个；7 张 PNG 为二进制）
+================================
+
+  modified  +80   -21  src/frontend/frontend/src/pages/activities.js
+  modified  +17    -0  src/frontend/frontend/src/shared/format.js
+  modified  +40    -0  src/frontend/frontend/assets/css/app.css
+  modified +214    -0  src/frontend/tools/verify.mjs
+  modified  +50    -3  src/frontend/README.md
+  modified   +1    -0  WORKLOG.md
+  new       +11    -0  src/frontend/package.json
+  new       +78    -0  src/frontend/tools/snapshot7.mjs
+  new      +197    -0  src/frontend/tools/shot7.mjs
+  new      +108    -0  src/frontend/tools/seed7.mjs
+  new      +155    -0  docs/issue7-activity-list.md
+  new       +70    -0  docs/blog-log2-section-issue7.md
+  new     +1623    -0  docs/shots/issue7-list-390.html
+  new     +1623    -0  docs/shots/issue7-list-320.html
+  binary   205KB     docs/shots/issue7-list-390.png
+  binary   200KB     docs/shots/issue7-list-filter-390.png
+  binary   129KB     docs/shots/issue7-list-empty-390.png
+  binary   191KB     docs/shots/issue7-list-full-390.png
+  binary   205KB     docs/shots/issue7-list-page2-390.png
+  binary   193KB     docs/shots/issue7-list-320.png
+  binary   266KB     docs/shots/issue7-list-desktop.png
+
+验证结果
+================================
+
+$ cd src/frontend && node tools/verify.mjs
+A. 接口清单覆盖（19 个）··········· 21 项通过
+B. 业务规则（对照《前端对接文档》）·· 13 项通过
+C. 页面渲染与 data-action 契约 ····· 39 项通过
+D. 时区与格式化 ··················· 12 项通过
+E. 一句话找局解析 ················· 14 项通过
+F. Issue #5 个人主页验收 ·········· 13 项通过
+G. Issue #7 活动列表验收 ·········· 28 项通过
+────────────────────────────────────────
+全部通过：140 项检查
+
+$ cd src/backend && py -m pytest -q
+54 passed, 212 warnings in 7.37s
+
+运行截图：7 张，全部 ?mock=0（真实 FastAPI），页面实际请求打到 127.0.0.1:8000；
+截图时 320px 视口实测 scrollWidth == innerWidth == 320（AC4）。
+
+环境说明
+================================
+
+本机 Python 为 3.9 / 3.14；SQLAlchemy==2.1.2 要求 Python >= 3.11，故后端用 Python 3.14
+运行，pydantic 取 2.12.5（2.10 线无 cp314 的 pydantic-core 轮子），其余与 requirements 一致：
+FastAPI 0.115.6 / uvicorn 0.34.0 / SQLAlchemy 2.1.2 / httpx 0.28.1。
+
+issue7.diff 是 difflib 生成的 unified diff（本机无 git），二进制 PNG 不进 diff，
+直接用 01-code-frontend/ 与 02-evidence/ 的同路径文件覆盖最稳。

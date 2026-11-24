@@ -1,0 +1,4468 @@
+--- a/src/frontend/frontend/src/pages/activities.js
++++ b/src/frontend/frontend/src/pages/activities.js
+@@ -18,11 +18,33 @@
+   tabBar,
+ } from '../shared/components.js'
+ import { CAMPUS_OPTIONS, ACT_STATUS, ACT_STATUS_TEXT, SKILL, SKILL_TEXT } from '../shared/domain.js'
++import { toBackendUtc } from '../shared/format.js'
+ import { navigate } from '../router.js'
+ import { TABS, clearFlash, store } from '../store.js'
+ import { setShell } from '../shared/ui.js'
+ 
+ const PAGE_SIZE = 8
++
++/**
++ * 「只看还有空位」为什么在前端过滤，而不是丢给后端的 only_available：
++ * 后端的 only_available 是先按 limit/offset 取一页、再在内存里筛掉满员的活动
++ * （services.list_activities），所以一页里被筛掉几条，这一页就只剩几条；
++ * 前端拿 `返回条数 < PAGE_SIZE` 判断"没有更多"，列表会提前停在第三屏。
++ * 这里改成：请求照常拿满一页，前端按 slots_left 过滤，游标始终等于服务端偏移。
++ * 后端那处过滤顺序已作为 DEF-01 报给后端组，修好后本函数可以直接删掉。
++ */
++function isAvailable(activity) {
++  return (
++    (activity.status === ACT_STATUS.OPEN || activity.status === ACT_STATUS.ONGOING) &&
++    Number(activity.slots_left) > 0
++  )
++}
++
++/** 合并新一页并按 id 去重：活动时间相同的两条记录在 offset 分页下可能重复出现。 */
++function mergeById(prev, next) {
++  const seen = new Set(prev.map((a) => a.id))
++  return prev.concat(next.filter((a) => !seen.has(a.id)))
++}
+ 
+ export function create() {
+   const state = {
+@@ -40,11 +62,24 @@
+     loading: false,
+     loadingMore: false,
+     error: '',
++    // 请求令牌：快速连续点筛选芯片时会同时发出多个 GET /activities，
++    // 慢的旧请求可能最后才回来、把新筛选的结果覆盖掉（stale-response 竞态）。
++    // 每次 load() 自增，响应回来时只有最新令牌的结果才允许写入 state。
++    reqId: 0,
+   }
+ 
+   let me = store.me
+ 
+-  /** 把界面上的筛选状态翻译成后端查询参数。 */
++  /**
++   * 把界面上的筛选状态翻译成后端查询参数。
++   *
++   * 时间参数为什么是"不带 Z 的 UTC 串"：后端把 start_time 以 naive UTC 存库
++   * （services 里 `ensure_aware_utc(...).replace(tzinfo=None)`），查询时又直接拿
++   * `Activity.start_time >= date_from` 比较；一旦传带 +00:00 的串，SQLite 会按字符串
++   * 比大小，"今天"这一整天都会被判成"早于下限"而查不出来（DEF-02）。
++   * 这里统一走 format.js 的 toBackendUtc()：先按本地日历算出当天 0 点 / 24 点，
++   * 再转成 naive UTC，和后端的存储格式对齐。
++   */
+   function buildQuery(offset = 0) {
+     const q = { limit: PAGE_SIZE, offset }
+     const f = state.filters
+@@ -52,57 +87,67 @@
+     if (f.campus) q.campus = f.campus
+     if (f.skill_level) q.skill_level = f.skill_level
+     if (f.status) q.status = f.status
+-    if (f.only_available) q.only_available = true
+-    // 时间范围：用本地时间算出当天的起止，再转 UTC 带偏移（后端接受带偏移的 ISO）
+     const now = new Date()
+     const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+     if (f.date === 'today') {
+-      q.date_from = startOfDay(now).toISOString()
+-      q.date_to = new Date(startOfDay(now).getTime() + 86400000).toISOString()
++      q.date_from = toBackendUtc(startOfDay(now))
++      q.date_to = toBackendUtc(new Date(startOfDay(now).getTime() + 86400000))
+     } else if (f.date === 'tomorrow') {
+       const t = new Date(startOfDay(now).getTime() + 86400000)
+-      q.date_from = t.toISOString()
+-      q.date_to = new Date(t.getTime() + 86400000).toISOString()
++      q.date_from = toBackendUtc(t)
++      q.date_to = toBackendUtc(new Date(t.getTime() + 86400000))
+     } else if (f.date === 'week') {
+-      q.date_from = now.toISOString()
+-      q.date_to = new Date(now.getTime() + 7 * 86400000).toISOString()
++      q.date_from = toBackendUtc(now)
++      q.date_to = toBackendUtc(new Date(now.getTime() + 7 * 86400000))
+     }
+     return q
+   }
+ 
+   async function load() {
+     clearFlash()
++    const reqId = ++state.reqId
+     state.loading = true
+     state.error = ''
+     rerender()
+     try {
+       const list = await api.getActivities(buildQuery(0))
+-      state.items = list
++      if (reqId !== state.reqId) return // 旧请求的响应，丢弃
+       state.offset = list.length
+       state.hasMore = list.length === PAGE_SIZE
++      state.items = state.filters.only_available ? list.filter(isAvailable) : list
+     } catch (err) {
++      if (reqId !== state.reqId) return
+       state.error = err?.message ?? '加载失败'
+       state.items = []
++      state.hasMore = false
+     } finally {
+-      state.loading = false
+-      rerender()
++      if (reqId === state.reqId) {
++        state.loading = false
++        rerender()
++      }
+     }
+   }
+ 
+   async function loadMore() {
+     if (state.loadingMore || !state.hasMore) return
++    const reqId = ++state.reqId
+     state.loadingMore = true
+     rerender()
+     try {
+       const list = await api.getActivities(buildQuery(state.offset))
+-      state.items = state.items.concat(list)
++      if (reqId !== state.reqId) return
+       state.offset += list.length
+       state.hasMore = list.length === PAGE_SIZE
++      const page = state.filters.only_available ? list.filter(isAvailable) : list
++      state.items = mergeById(state.items, page)
+     } catch (err) {
++      if (reqId !== state.reqId) return
+       state.error = err?.message ?? '加载更多失败'
+     } finally {
+-      state.loadingMore = false
+-      rerender()
++      if (reqId === state.reqId) {
++        state.loadingMore = false
++        rerender()
++      }
+     }
+   }
+ 
+@@ -225,12 +270,26 @@
+                    }
+                  </div>
+                </section>`
+-            : empty({
+-                icon: '🔍',
+-                title: '没有符合条件的活动',
+-                desc: '试试把状态改成「不限状态」或者清掉部分筛选条件。',
+-                action: button('重置筛选', { action: 'reset', variant: 'primary' }),
+-              })
++            : state.hasMore
++              ? // 这一页的活动都被「只看还有空位」筛掉了，不能显示"没有符合条件的活动"，
++                // 否则用户会以为真的没有数据、直接退出（P-03 的可达性问题）。
++                `<section class="sm-stack">
++                   ${alert('info', '这一页的活动都已经满员了，可以继续往下看看。')}
++                   <div style="text-align:center;padding:6px 0">
++                     ${button(state.loadingMore ? '加载中…' : '加载更多', {
++                       action: 'more',
++                       variant: 'ghost',
++                       block: true,
++                       disabled: state.loadingMore,
++                     })}
++                   </div>
++                 </section>`
++              : empty({
++                  icon: '🔍',
++                  title: '没有符合条件的活动',
++                  desc: '试试把状态改成「不限状态」或者清掉部分筛选条件。',
++                  action: button('重置筛选', { action: 'reset', variant: 'primary' }),
++                })
+       }
+ 
+       ${tabBar('activities', TABS)}
+--- a/src/frontend/frontend/src/shared/format.js
++++ b/src/frontend/frontend/src/shared/format.js
+@@ -96,6 +96,23 @@
+   return Number.isNaN(d.getTime()) ? null : d.toISOString()
+ }
+ 
++/**
++ * 转成后端【可比较】的 naive UTC 串："2026-11-23T16:00:00.000"（没有 Z）。
++ *
++ * 为什么需要它：后端的 start_time 是 naive UTC（存库前 `.replace(tzinfo=None)`），
++ * 而 `GET /activities` 的 date_from / date_to 又直接参与 SQL 比较。SQLite 按字符串
++ * 比大小，带 "+00:00" 的 ISO 串结尾比库里多 6 个字符，同一秒的记录会被判成"更小"，
++ * 于是"今天"筛选会把今天整天的活动全部漏掉。去掉时区后缀后两边格式一致，比较才正确。
++ * 只用于【查询参数】；写库时间仍走 toISOString()，让后端自己转。
++ * @param {Date|string|number} value
++ * @returns {string|null}
++ */
++export function toBackendUtc(value) {
++  const d = value instanceof Date ? value : new Date(value)
++  if (Number.isNaN(d.getTime())) return null
++  return d.toISOString().replace(/Z$/, '')
++}
++
+ /** 判断活动是否已经开始（用于"不能报名/已结束"等界面状态）。 */
+ export function hasStarted(startIso, now = Date.now()) {
+   const d = parseServerTime(startIso)
+--- a/src/frontend/frontend/assets/css/app.css
++++ b/src/frontend/frontend/assets/css/app.css
+@@ -494,6 +494,7 @@
+   -webkit-line-clamp: 2;
+   -webkit-box-orient: vertical;
+   overflow: hidden;
++  overflow-wrap: anywhere;
+ }
+ .sm-act__meta {
+   font-size: 12.5px;
+@@ -1171,3 +1172,42 @@
+   }
+ }
+ 
++
++/* ---------- 24. 320px 护栏（Issue #7 AC4：窄屏不横向溢出） ---------- */
++/*
++ * 320px 下最容易溢出的三处：顶栏两侧留白 + 「发起」按钮、卡片底部
++ * 「时间 / 名额 / 报名」挤在一行、以及筛选芯片整排铺开。
++ * 这里只收留白、允许换行，不改任何字号与颜色，视觉上与 390px 保持一致。
++ */
++@media (max-width: 360px) {
++  .sm-main {
++    padding-left: 12px;
++    padding-right: 12px;
++  }
++  .sm-appbar__inner {
++    padding-left: 12px;
++    padding-right: 12px;
++    gap: 8px;
++  }
++  .sm-act__foot {
++    flex-wrap: wrap;
++    gap: 8px;
++  }
++  .sm-act__meta {
++    gap: 2px 6px;
++  }
++  .sm-btn--sm {
++    padding-left: 10px;
++    padding-right: 10px;
++  }
++  .sm-chip {
++    padding-left: 11px;
++    padding-right: 11px;
++  }
++  .sm-filters {
++    margin-left: -12px;
++    margin-right: -12px;
++    padding-left: 12px;
++    padding-right: 12px;
++  }
++}
+--- a/src/frontend/tools/verify.mjs
++++ b/src/frontend/tools/verify.mjs
+@@ -9,7 +9,9 @@
+  *   C. 每个页面的 view() 能渲染出结构完整的 HTML：标签配平、无 undefined/NaN、
+  *      所有 data-action 都有对应处理函数
+  *   D. 时区与格式化：UTC 串按本地时间显示（不出现差 8 小时）
++ *   E. 一句话找局的中英文解析
+  *   F. Issue #5 个人主页验收：昵称 / 信用分 / 完成与爽约次数 / 评价人昵称补全
++ *   G. Issue #7 活动列表验收：分页游标 / 去重 / 筛选组合 / 空态 / 时间窗口 / 320px 护栏
+  *
+  * 运行： node tools/verify.mjs
+  */
+@@ -580,6 +582,218 @@
+ check('样式里有 ≤420px 的窄屏适配规则', /@media\s*\(max-width:\s*420px\)/.test(cssText))
+ 
+ /* ===================================================================== */
++/* G. Issue #7 活动列表与筛选                                             */
++/* ===================================================================== */
++
++section('G. Issue #7 活动列表 + 筛选验收（AC1 列表来自接口 / AC2 组合筛选 / AC3 空态 / AC4 320px）')
++
++resetMock()
++tokenStore.set((await api.login('linhao', 'secret123')).access_token)
++setSession(await api.getMe())
++store.sports = await api.getSports()
++
++/**
++ * 用一份完全可控的假数据替掉 GET /activities，这样可以精确断言
++ * "发了什么查询参数" 和 "翻页游标算得对不对"，不受 fixtures 数量变化影响。
++ */
++const catalog = Array.from({ length: 12 }, (_, i) => {
++  const day = 25 + Math.floor(i / 4)
++  return {
++    id: 900 + i,
++    title: `自检活动 ${i + 1}`,
++    sport: i % 2 ? '篮球' : '羽毛球',
++    campus: i % 3 ? '旗山校区' : '铜盘校区',
++    location: '体育馆 1 号场',
++    start_time: `2026-11-${day}T02:00:00`,
++    end_time: `2026-11-${day}T04:00:00`,
++    skill_level: ['beginner', 'intermediate', 'any'][i % 3],
++    status: 'open',
++    capacity: 6,
++    joined_count: i < 3 ? 6 : 2,
++    slots_left: i < 3 ? 0 : 4, // 前 3 条满员：用来验证「只看还有空位」
++    fee: 0,
++    gender_limit: 'any',
++    organizer: { id: 1, nickname: '林浩', reliability_score: 88 },
++  }
++})
++
++const realGetActivities = api.getActivities
++let lastQuery = null
++let forceFullPage = false
++
++/** 假后端：按真实后端的过滤语义实现（含"先分页后过滤"的 DEF-01 行为）。 */
++function fakeList(query = {}) {
++  lastQuery = { ...query }
++  let list = catalog.slice()
++  if (query.sport) list = list.filter((a) => a.sport === query.sport)
++  if (query.campus) list = list.filter((a) => a.campus === query.campus)
++  if (query.status) list = list.filter((a) => a.status === query.status)
++  if (query.skill_level) {
++    list = list.filter((a) => a.skill_level === query.skill_level || a.skill_level === 'any')
++  }
++  const offset = Number(query.offset ?? 0)
++  const limit = Number(query.limit ?? 8)
++  let page = list.slice(offset, offset + limit)
++  // 后端 DEF-01：only_available 在分页之后才过滤。前端若还传这个参数就会踩坑，
++  // 因此 G 段专门断言前端已经不再传它（改成前端过滤）。
++  if (query.only_available) page = page.filter((a) => a.slots_left > 0)
++  if (forceFullPage) page = catalog.slice(0, limit).map((a) => ({ ...a, slots_left: 0, joined_count: 6 }))
++  // 模拟"同一活动在相邻两页重复出现"（按 start_time 排序 + offset 的经典问题）
++  if (offset === 8) page = page.concat([catalog[0]])
++  return page
++}
++
++api.getActivities = async (q = {}) => fakeList(q)
++
++const { create: createListPage } = await import('../frontend/src/pages/activities.js')
++
++async function openList() {
++  const page = createListPage({})
++  await page.load()
++  return page
++}
++
++const countCards = (html) => (html.match(/data-action="open-activity"/g) ?? []).length
++
++// AC1：列表来自接口，一页 8 条 + 还有更多（先关掉「只看还有空位」，看原始一页）
++let listPage = await openList()
++await listPage.actions['toggle-available'](fakeCtx())
++let listHtml = listPage.view()
++check('AC1 列表首屏来自接口且拿满一页', countCards(listHtml) === 8, `实际 ${countCards(listHtml)} 条`)
++check('AC1 默认只查「可报名」状态', lastQuery?.status === 'open', JSON.stringify(lastQuery))
++check('AC1 默认分页参数 limit=8 / offset=0', lastQuery?.limit === 8 && lastQuery?.offset === 0, JSON.stringify(lastQuery))
++check('AC1 有更多数据时出现「加载更多」', listHtml.includes('加载更多'))
++check(
++  'AC1 不再把 only_available 甩给后端（规避 DEF-01 的提前截断）',
++  !('only_available' in (lastQuery ?? {})),
++  JSON.stringify(lastQuery)
++)
++
++// 翻页：offset 必须等于已取到的原始条数，且重复 id 只保留一条
++await listPage.actions.more(fakeCtx())
++const page2Html = listPage.view()
++check('AC1 第二页 offset=8', lastQuery?.offset === 8, JSON.stringify(lastQuery))
++check(
++  'AC1 重复出现同一活动时按 id 去重',
++  (page2Html.match(/data-action="open-activity" data-id="900"/g) ?? []).length === 1
++)
++check('AC1 12 条全部取完后显示「已经到底了」', page2Html.includes('已经到底了'), '第二页应无更多')
++
++// AC2：筛选组合正确
++listPage = await openList()
++await listPage.actions.filter(fakeCtx({ dataset: { name: 'sport', value: '篮球' } }))
++let html = listPage.view()
++check('AC2 项目筛选生效（6 条篮球里 1 条已满员被隐藏）', countCards(html) === 5, `实际 ${countCards(html)} 条`)
++check('AC2 项目参数进查询串', lastQuery?.sport === '篮球', JSON.stringify(lastQuery))
++
++await listPage.actions.filter(fakeCtx({ dataset: { name: 'campus', value: '铜盘校区' } }))
++html = listPage.view()
++const both = countCards(html)
++check('AC2 项目 + 校区两个条件同时生效', both === 2 && lastQuery?.sport === '篮球' && lastQuery?.campus === '铜盘校区',
++  `实际 ${both} 条 / ${JSON.stringify(lastQuery)}`)
++
++await listPage.actions.filter(fakeCtx({ dataset: { name: 'skill_level', value: 'beginner' } }))
++html = listPage.view()
++check(
++  'AC2 三个条件叠加后结果仍正确（any 水平也算匹配）',
++  countCards(html) === 2 && lastQuery?.skill_level === 'beginner',
++  `实际 ${countCards(html)} 条 / ${JSON.stringify(lastQuery)}`
++)
++
++// AC2：重置筛选
++await listPage.actions.reset(fakeCtx())
++html = listPage.view()
++check('AC2 重置后回到默认筛选', countCards(html) === 5 && lastQuery?.sport === undefined && lastQuery?.campus === undefined,
++  JSON.stringify(lastQuery))
++
++// 「只看还有空位」= 前端过滤，13 条里 3 条满员
++listPage = await openList()
++await listPage.actions['toggle-available'](fakeCtx())
++html = listPage.view()
++check('AC2 取消「只看还有空位」后满员活动也显示', countCards(html) === 8, `实际 ${countCards(html)} 条`)
++await listPage.actions.more(fakeCtx())
++check('AC2 未过滤时 12 条都可见', countCards(listPage.view()) === 12, `实际 ${countCards(listPage.view())} 条`)
++
++listPage = await openList()
++html = listPage.view()
++check('AC2 默认勾选「只看还有空位」时满员活动被隐藏', countCards(html) === 5, `实际 ${countCards(html)} 条`)
++check('AC2 隐藏发生在接口返回之后（一页 8 条里剩 5 条，但仍可继续翻页）', html.includes('加载更多'))
++
++// 整页都满员时不能显示"没有符合条件的活动"
++forceFullPage = true
++listPage = createListPage({})
++await listPage.load()
++html = listPage.view()
++check(
++  'AC3 整页满员时给出「继续加载」提示而不是空态',
++  html.includes('都已经满员') && !html.includes('没有符合条件的活动'),
++  '满员整页被误判成空列表'
++)
++forceFullPage = false
++
++// AC3：空态
++listPage = await openList()
++await listPage.actions.filter(fakeCtx({ dataset: { name: 'sport', value: '攀岩' } }))
++html = listPage.view()
++check('AC3 无结果时显示空态文案', html.includes('没有符合条件的活动'), '缺少空态')
++check('AC3 空态提供「重置筛选」出口', html.includes('data-action="reset"'))
++
++// 时间筛选：必须发 naive UTC（不带宽区后缀），且精确等于本地当天 0 点 / 24 点
++listPage = await openList()
++await listPage.actions.filter(fakeCtx({ dataset: { name: 'date', value: 'today' } }))
++const qFrom = lastQuery?.date_from
++const qTo = lastQuery?.date_to
++check('AC2 时间筛选带上 date_from / date_to', Boolean(qFrom && qTo), JSON.stringify(lastQuery))
++check(
++  'AC2 时间参数是 naive UTC（不带 Z），与后端的 naive 存储对齐',
++  Boolean(qFrom && qTo && !/Z$/.test(qFrom) && !/Z$/.test(qTo)),
++  `${qFrom} ~ ${qTo}`
++)
++const midnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
++const asUtc = (s) => new Date(/Z$/i.test(s) ? s : `${s}Z`)
++const delta = asUtc(qTo).getTime() - asUtc(qFrom).getTime()
++check('AC2 时间窗口正好 24 小时', Math.abs(delta - 86400000) < 1000, `${delta} ms`)
++check(
++  'AC2 时间窗口起点等于本地今天 0 点',
++  Math.abs(asUtc(qFrom).getTime() - midnight.getTime()) < 1000,
++  `${qFrom} vs ${midnight.toISOString()}`
++)
++
++// AC2 竞态防护：快速连续点筛选芯片时，旧请求最后返回也不能覆盖新筛选结果
++{
++  const pending = []
++  api.getActivities = (q = {}) =>
++    new Promise((res) => {
++      pending.push({ q, res })
++    })
++  const racePage = createListPage({})
++  const first = racePage.load()
++  const second = racePage.actions.filter(fakeCtx({ dataset: { name: 'sport', value: '篮球' } }))
++  // 先放行新请求（篮球），再放行旧请求（默认筛选），看旧响应会不会把列表打回原形
++  pending[1].res(catalog.filter((a) => a.sport === '篮球').slice(0, 8))
++  await new Promise((r) => setTimeout(r, 30))
++  pending[0].res(catalog.slice(0, 8))
++  await new Promise((r) => setTimeout(r, 30))
++  await first
++  await second
++  const raceHtml = racePage.view()
++  check(
++    'AC2 快速切换筛选时，旧响应不覆盖新结果（stale-response 竞态防护）',
++    countCards(raceHtml) === 5 && raceHtml.includes('自检活动 4') && !raceHtml.includes('自检活动 3'),
++    `卡片数 ${countCards(raceHtml)}`
++  )
++}
++
++// AC4：320px 下的静态保障（像素级验收见 docs/issue7-activity-list.md 的复现步骤）
++const { readFileSync: readCss } = await import('node:fs')
++const listCss = readCss(new URL('../frontend/assets/css/app.css', import.meta.url), 'utf8')
++check('AC4 存在 ≤360px 的窄屏护栏规则', /@media\s*\(max-width:\s*360px\)/.test(listCss))
++check('AC4 卡片标题允许断词，长标题不会撑破容器', /\.sm-act__title[^}]*overflow-wrap:\s*anywhere/s.test(listCss))
++check('AC4 筛选芯片横向滚动而不是撑破页面', /\.sm-filters[^}]*overflow-x:\s*auto/s.test(listCss))
++
++api.getActivities = realGetActivities
++
++/* ===================================================================== */
+ /* 汇总                                                                  */
+ /* ===================================================================== */
+ 
+--- a/src/frontend/README.md
++++ b/src/frontend/README.md
+@@ -268,12 +268,53 @@
+ 
+ ---
+ 
++## 四点六、活动列表接真实后端联调（Issue #7）
++
++Alpha Sprint 的 #7「活动列表 + 筛选」把 P-03 接到了真实后端的 `GET /activities` 上，并补了 28 项验收断言、7 张真实后端运行截图。
++
++```powershell
++cd src/frontend
++node tools/verify.mjs                  # 140 项：原有 112 项 + #7 验收 G 段 28 项
++node tools/server.mjs                  # http://127.0.0.1:5178/frontend/
++```
++
++打开 `http://127.0.0.1:5178/frontend/?mock=0#/activities` 即为真实后端模式（需先起 `src/backend` 并跑 `node tools/seed-demo.mjs`、`node tools/seed7.mjs`）。
++
++### 三个必须知道的联调结论
++
++| 问题 | 现在的做法 | 说明 |
++|---|---|---|
++| 后端的 `only_available` 是"先分页、后过滤" | 前端不传该参数，按 `slots_left` 本地过滤 | 否则一页被筛掉几条，`返回条数 < 8` 会被误判成"没有更多"，列表停在第 3 屏（DEF-01） |
++| 后端 `start_time` 是 naive UTC | 时间筛选统一走 `format.js` 的 `toBackendUtc()`（不带 `Z`） | 传带 `+00:00` 的串会被 SQLite 按字符串比较，"今天"整天查不出来（DEF-02） |
++| 快速连点筛选芯片，旧响应会覆盖新结果 | `state.reqId` 请求令牌，过期响应直接丢弃 | 截图脚本自动化点击时真实复现的 stale-response 竞态（DEF-03） |
++
++根因、建议的后端修法与证据见 [`docs/issue7-activity-list.md`](../../docs/issue7-activity-list.md)，
++运行截图见 [`docs/shots/issue7-list-*.png`](../../docs/shots/)。
++
++### 怎么出截图
++
++```powershell
++node tools/seed7.mjs   # 造 5 用户 + 12 场活动（2 场满员），让列表/分页/筛选有真实数据
++node tools/shot7.mjs --url="http://127.0.0.1:5178/frontend/?mock=0#/activities" `
++  --out="../docs/shots/issue7-list-390.png" --w=390 --h=844
++# 交互画面用 --eval 先点筛选再截，例如空态：
++node tools/shot7.mjs --url="http://127.0.0.1:5178/frontend/?mock=0#/activities" `
++  --out="../docs/shots/issue7-list-empty-390.png" --w=390 --h=844 `
++  --eval="document.querySelector('[data-name=\"sport\"][data-value=\"足球\"]').click();document.querySelector('[data-name=\"campus\"][data-value=\"旗山校区\"]').click()"
++```
++
++> 无头浏览器在 DSH 沙盒里起不来（禁 Chromium 命名管道 IPC），截图脚本要在普通桌面环境跑。
++
++没有浏览器时，`node tools/snapshot7.mjs` 仍可生成自包含 HTML 版式快照（`view()` 输出 + 内联 `app.css`）。
++
++---
++
+ ## 五、自检与再生成
+ 
+ "界面是否正确"用**程序化校验**兜底，不是靠肉眼：
+ 
+ ```powershell
+-node tools/verify.mjs                 # 112 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析 / #5 个人主页
++node tools/verify.mjs                 # 140 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析 / #5 个人主页 / #7 活动列表
+ node tools/check-links.mjs            # 5 个入口页面的 js/css/svg 引用全部可达
+ python tools/render-class-diagram.py  # 由 .mmd 生成 SVG + HTML
+ python tools/check-class-diagram.py   # 类图几何校验：文字不溢出、连线不穿框、画布不截断
+@@ -298,7 +339,11 @@
+ - **C. 页面渲染**：11 个页面的 HTML 标签配平、无 `undefined`/`NaN`、
+   所有 `data-action` 都有对应处理函数；游客态再跑一遍；
+ - **D. 时区**：不带时区按 UTC 解析、带 `Z` 不重复补、`+08:00` 与 `+0800` 都能识别，
+-  并专门回归"少 8 小时"这个经典 bug。
++  并专门回归"少 8 小时"这个经典 bug；
++- **E. 一句话找局**：中英文混排的查询能解析成结构化筛选，并且解析不出来的部分不会瞎猜；
++- **F. Issue #5 个人主页**：昵称 / 信用分 / 完成与爽约次数 / 评价人昵称补全；
++- **G. Issue #7 活动列表**：分页游标、id 去重、四类筛选组合、空态、满员整页、
++  时间窗口是 naive UTC、320px 静态护栏、stale-response 竞态。
+ 
+ 最近一次运行结果：
+ 
+@@ -308,8 +353,10 @@
+ C. 页面渲染与 data-action 契约 ····· 39 项通过
+ D. 时区与格式化 ··················· 12 项通过
+ E. 一句话找局解析 ················· 14 项通过
++F. Issue #5 个人主页验收 ·········· 13 项通过
++G. Issue #7 活动列表验收 ·········· 28 项通过
+ ────────────────────────────────────────
+-全部通过：99 项检查
++全部通过：140 项检查
+ ```
+ 
+ 类图几何校验：
+--- a/WORKLOG.md
++++ b/WORKLOG.md
+@@ -24,6 +24,7 @@
+ 
+ | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
+ | --- | --- | --- | --- | --- | --- |
++| 2026-11-24 | <GitHub 用户名> | 新增/修改 | `src/frontend/frontend/src/pages/activities.js`、`src/frontend/frontend/src/shared/format.js`、`src/frontend/frontend/assets/css/app.css`、`src/frontend/tools/verify.mjs`、`src/frontend/tools/snapshot7.mjs`、`src/frontend/package.json`、`src/frontend/README.md`、`docs/issue7-activity-list.md`、`docs/shots/issue7-list-390.html`、`docs/shots/issue7-list-320.html` | 完成 Issue #7「Activity list + filters」：列表接 `GET /activities`，修「只看还有空位」在前端过滤以规避后端先分页后过滤导致的提前截断（DEF-01），时间筛选改发 naive UTC 修「今天」整天查不出（DEF-02），翻页按 id 去重，整页满员时给「继续加载」而不是假空态，补 320px 护栏与离线版式快照；`node tools/verify.mjs` 139 项全部通过（新增 G 段 27 项） | 作业五 |
+ | 2026-11-24 | 060725 | 新增 | `src/backend/tests/test_issue15_credit_matrix.py`、`src/backend/tools/race_probe.py`、`docs/alpha-test-report-2026-11-24.md`、`docs/shots/alpha-test-evidence-2026-11-24.png`、`README.md` | 为 Issue #15 补 12 条信用分规则验收用例（全量 54 项通过），新增并发报名探针复现超员缺陷 DEF-01（容量 2 实际入队 7/7/8），产出 Alpha 测试报告与证据图，README 补充测试命令 | 作业五 |
+ | 2026-11-22 | 3054664804 | 新增 | `src/backend/tests/test_issue10_persistence_acceptance.py` | 为 Issue #10 增加持久化验收测试 | 作业五 |
+ | 2026-11-22 | Lip666-dev | 新增 | `src/backend/tests/test_issue7_activity_list_acceptance.py` | 为 Issue #7 增加活动列表验收测试 | 作业五 |
+--- /dev/null
++++ b/src/frontend/package.json
+@@ -0,0 +1,11 @@
++{
++  "name": "sportsbuddy-frontend",
++  "private": true,
++  "type": "module",
++  "description": "Zero-dependency ES-module frontend for Sports Buddy (no npm install, no build step). The \"type\": \"module\" field only tells Node.js that .js files under this directory are ES modules, which is what tools/verify.mjs and tools/server.mjs expect.",
++  "scripts": {
++    "start": "node tools/server.mjs",
++    "verify": "node tools/verify.mjs",
++    "links": "node tools/check-links.mjs"
++  }
++}
+--- /dev/null
++++ b/src/frontend/tools/snapshot7.mjs
+@@ -0,0 +1,78 @@
++/**
++ * 把「活动列表」页渲染成一张离线 HTML（Issue #7 证据用）
++ * ---------------------------------------------------------------------------
++ * 为什么需要它：这台机器上无头浏览器起不来（沙盒禁止 Chromium 的 IPC），
++ * 截不了 PNG。这个脚本用 tools/browser-stub.mjs 在 Node 里跑真实的页面模块，
++ * 把 view() 的输出 + app.css 内联成一个自包含的 HTML，双击就能在浏览器里看到
++ * 390px 版式，按 F12 切 320px 也能直接验收"不横向溢出"。
++ *
++ * 用法：
++ *   node tools/snapshot7.mjs
++ *   node tools/snapshot7.mjs --out=docs/shots/issue7-list-390.html --w=390
++ */
++
++import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
++import { dirname } from 'node:path'
++import { fileURLToPath } from 'node:url'
++import { installBrowserStub } from './browser-stub.mjs'
++
++installBrowserStub({ useMock: true })
++
++const args = Object.fromEntries(
++  process.argv.slice(2).map((a) => {
++    const [k, ...v] = a.replace(/^--/, '').split('=')
++    return [k, v.join('=')]
++  })
++)
++
++// 默认落到仓库根目录的 docs/shots/（与 Issue #5 的截图放在一起）；
++// 传了 --out 就按当前工作目录解析。
++const defaultOut = fileURLToPath(new URL('../../../docs/shots/issue7-list-390.html', import.meta.url))
++const out = args.out ?? defaultOut
++const width = Number(args.w ?? 390)
++
++const { api, tokenStore } = await import('../frontend/src/api/index.js')
++const { store, setSession } = await import('../frontend/src/store.js')
++const { create } = await import('../frontend/src/pages/activities.js')
++
++tokenStore.set((await api.login('linhao', 'secret123')).access_token)
++setSession(await api.getMe())
++store.sports = await api.getSports()
++
++const page = create({})
++await page.load()
++const body = page.view()
++const bar = page.appBar()
++
++const css = readFileSync(new URL('../frontend/assets/css/app.css', import.meta.url), 'utf8')
++const shell = `<!doctype html>
++<html lang="zh-CN">
++<head>
++<meta charset="utf-8" />
++<meta name="viewport" content="width=device-width, initial-scale=1" />
++<title>Issue #7 活动列表 · ${width}px 静态快照</title>
++<style>
++${css}
++/* 快照专用外壳：把页面放进一个 ${width}px 的手机框里，方便直接截图 */
++.snap-stage { background: #eef1f5; min-height: 100vh; padding: 24px 12px; display: flex; justify-content: center; }
++.snap-frame { width: ${width}px; max-width: 100%; background: #fff; border-radius: 22px; overflow: hidden;
++  box-shadow: 0 18px 48px rgba(16, 24, 40, .18); display: flex; flex-direction: column; }
++.snap-note { position: fixed; left: 12px; bottom: 12px; font: 12px/1.5 ui-monospace, Consolas, monospace;
++  color: #64748b; background: rgba(255,255,255,.9); padding: 6px 10px; border-radius: 8px; }
++</style>
++</head>
++<body>
++<div class="snap-stage">
++  <div class="snap-frame">
++    ${bar}
++    ${body}
++  </div>
++</div>
++<div class="snap-note">Issue #7 · 活动列表 · ${width}×844 · 数据来自内置示意数据（mock）</div>
++</body>
++</html>
++`
++
++mkdirSync(dirname(out), { recursive: true })
++writeFileSync(out, shell, 'utf8')
++console.log(`已生成 ${out}（${width}px，${(shell.length / 1024).toFixed(1)} KB）`)
+--- /dev/null
++++ b/src/frontend/tools/shot7.mjs
+@@ -0,0 +1,197 @@
++/**
++ * 给 Issue #7 活动列表截运行图（真实后端 ?mock=0）
++ * ---------------------------------------------------------------------------
++ * 在 shot5.mjs 的 CDP 基础上加了 --eval：页面渲染完成后先执行一段 JS（比如点筛选
++ * 芯片），再等 1.2 秒、再截图。这样"筛选组合""空态"这类需要交互的画面也能留证据。
++ *
++ * 用法示例：
++ *   node tools/shot7.mjs --url="http://127.0.0.1:5178/frontend/?mock=0#/activities" `
++ *     --out="../docs/shots/issue7-list-390.png" --w=390 --h=844
++ *   node tools/shot7.mjs --url="..." --out="..." --w=390 --h=844 `
++ *     --eval="document.querySelector('[data-name=\"sport\"][data-value=\"羽毛球\"]').click()"
++ *
++ * 注意：必须在"普通桌面环境"跑（沙盒禁止 Chromium 的 mojo IPC，无头浏览器起不来）。
++ */
++
++import { spawn } from 'node:child_process'
++import { mkdirSync, writeFileSync } from 'node:fs'
++import { setTimeout as sleep } from 'node:timers/promises'
++import { dirname } from 'node:path'
++
++const args = Object.fromEntries(
++  process.argv.slice(2).map((a) => {
++    const [k, ...v] = a.replace(/^--/, '').split('=')
++    return [k, v.join('=')]
++  })
++)
++
++const url = args.url
++const out = args.out ?? 'shot7.png'
++const width = Number(args.w ?? 390)
++const height = Number(args.h ?? 844)
++const scale = Number(args.scale ?? 2)
++const token = args.token ?? ''
++const selector = args.selector ?? '.sm-main'
++const evalAfter = args.eval ?? ''
++
++if (!url) {
++  console.error('缺少 --url')
++  process.exit(2)
++}
++
++const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
++const PORT = 9300 + Math.floor(Math.random() * 200)
++const profileDir = `${process.env.TEMP ?? '.'}\\edge-shot7-${PORT}`
++
++const edge = spawn(
++  EDGE,
++  [
++    '--headless=new',
++    '--disable-gpu',
++    '--no-first-run',
++    '--no-default-browser-check',
++    '--hide-scrollbars',
++    '--disable-extensions',
++    `--remote-debugging-port=${PORT}`,
++    `--user-data-dir=${profileDir}`,
++    '--window-size=1280,900',
++    'about:blank',
++  ],
++  { stdio: 'ignore', detached: true }
++)
++edge.unref()
++
++let ws
++function connect(urlWs) {
++  return new Promise((resolve, reject) => {
++    const socket = new WebSocket(urlWs)
++    const timer = setTimeout(() => reject(new Error('连接 CDP 超时')), 15000)
++    socket.addEventListener('open', () => {
++      clearTimeout(timer)
++      resolve(socket)
++    })
++    socket.addEventListener('error', () => {
++      clearTimeout(timer)
++      reject(new Error(`连接 CDP 失败：${urlWs}`))
++    })
++  })
++}
++
++function client(socket) {
++  let seq = 0
++  const pending = new Map()
++  const events = []
++  socket.addEventListener('message', (ev) => {
++    const msg = JSON.parse(ev.data)
++    if (msg.id && pending.has(msg.id)) {
++      const { resolve, reject } = pending.get(msg.id)
++      pending.delete(msg.id)
++      if (msg.error) reject(new Error(`${msg.error.message}`))
++      else resolve(msg.result)
++    } else if (msg.method) {
++      events.push(msg)
++    }
++  })
++  return { send(method, params = {}) {
++    const id = ++seq
++    return new Promise((resolve, reject) => {
++      pending.set(id, { resolve, reject })
++      socket.send(JSON.stringify({ id, method, params }))
++    })
++  }, events }
++}
++
++async function waitForPort() {
++  for (let i = 0; i < 200; i += 1) {
++    try {
++      const res = await fetch(`http://127.0.0.1:${PORT}/json/version`)
++      if (res.ok) return await res.json()
++    } catch { /* 还没起来 */ }
++    await sleep(150)
++  }
++  throw new Error('浏览器端口始终没打开')
++}
++
++async function evaluate(cdp, expression) {
++  const res = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })
++  if (res.exceptionDetails) throw new Error(res.exceptionDetails.text ?? '页面脚本报错')
++  return res.result.value
++}
++
++async function main() {
++  await waitForPort()
++  const target = await (
++    await fetch(`http://127.0.0.1:${PORT}/json/new?${encodeURIComponent('about:blank')}`, { method: 'PUT' })
++  ).json()
++  ws = await connect(target.webSocketDebuggerUrl)
++  const cdp = client(ws)
++
++  await cdp.send('Page.enable')
++  await cdp.send('Runtime.enable')
++  await cdp.send('Emulation.setDeviceMetricsOverride', {
++    width,
++    height,
++    deviceScaleFactor: scale,
++    mobile: width < 600,
++  })
++
++  await cdp.send('Page.navigate', { url: new URL('/frontend/', url).href })
++  await sleep(1500)
++  if (token) {
++    await evaluate(cdp, `localStorage.setItem('sportmate.token', ${JSON.stringify(token)})`)
++  }
++
++  await cdp.send('Page.navigate', { url: 'about:blank' })
++  await sleep(400)
++  await cdp.send('Page.navigate', { url })
++  await sleep(1500)
++
++  let ok = false
++  for (let i = 0; i < 40; i += 1) {
++    ok = await evaluate(cdp, `Boolean(document.querySelector(${JSON.stringify(selector)}))`)
++    if (ok) break
++    await sleep(500)
++  }
++  if (!ok) console.error(`警告：等不到元素 ${selector}，仍然截图`)
++  await sleep(800)
++
++  if (evalAfter) {
++    await evaluate(cdp, evalAfter)
++    await sleep(1500)
++  }
++
++  const info = await evaluate(
++    cdp,
++    `JSON.stringify({
++       title: document.title,
++       text: (document.body.innerText || '').slice(0, 500),
++       mock: document.documentElement.dataset.mock ?? null,
++       scrollW: document.documentElement.scrollWidth,
++       innerW: window.innerWidth,
++       api: performance.getEntriesByType('resource').map((e) => e.name).filter((n) => n.includes(':8000')).slice(-8)
++     })`
++  )
++
++  const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
++  mkdirSync(dirname(out), { recursive: true })
++  writeFileSync(out, Buffer.from(shot.data, 'base64'))
++
++  const errors = cdp.events
++    .filter((e) => e.method === 'Runtime.exceptionThrown')
++    .map((e) => e.params.exceptionDetails?.text ?? '')
++    .filter(Boolean)
++
++  console.log(`已保存 ${out}`)
++  console.log(`页面信息 ${info}`)
++  if (errors.length) console.error(`页面异常：${errors.join(' | ')}`)
++}
++
++try {
++  await main()
++} catch (err) {
++  console.error(`截图失败：${err.message}`)
++  process.exitCode = 1
++} finally {
++  try { ws?.close() } catch { /* ignore */ }
++  edge.kill()
++}
+--- /dev/null
++++ b/src/frontend/tools/seed7.mjs
+@@ -0,0 +1,108 @@
++/**
++ * 给 Issue #7「活动列表 + 筛选」造一版演示数据
++ * ---------------------------------------------------------------------------
++ * 在 seed-demo.mjs（4 用户 / 3 活动）的基础上，再注册 5 个用户、创建 12 场活动：
++ * 覆盖 8 种运动、2 个校区、4 档水平、今天/明天/后天/下周多个时间窗，
++ * 其中 2 场人为报满（验证「只看还有空位」与满员标签），总量超过一页（8 条），
++ * 让分页「加载更多」在截图里能真实出现。
++ *
++ * 用法：node tools/seed7.mjs   （前提：后端 127.0.0.1:8000 已起、已跑过 seed-demo.mjs）
++ * 可重复执行：用户已存在会走登录；活动会新增（用于清空重来的话删 DB 后重跑 seed-demo 再跑本脚本）。
++ */
++
++const BASE = 'http://127.0.0.1:8000'
++
++async function call(path, { method = 'GET', token, body } = {}) {
++  const headers = { 'Content-Type': 'application/json' }
++  if (token) headers.Authorization = `Bearer ${token}`
++  const res = await fetch(`${BASE}${path}`, {
++    method,
++    headers,
++    body: body === undefined ? undefined : JSON.stringify(body),
++  })
++  const text = await res.text()
++  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${text}`)
++  return text ? JSON.parse(text) : null
++}
++
++function iso(minutesFromNow) {
++  return new Date(Date.now() + minutesFromNow * 60_000).toISOString()
++}
++
++const extraUsers = [
++  { username: 'liuwei', password: 'sportmate123', nickname: '刘伟', campus: '旗山校区', skill_level: 'intermediate', favorite_sports: ['羽毛球'] },
++  { username: 'zhaomin', password: 'sportmate123', nickname: '赵敏', campus: '铜盘校区', skill_level: 'beginner', favorite_sports: ['乒乓球'] },
++  { username: 'sunjie', password: 'sportmate123', nickname: '孙杰', campus: '旗山校区', skill_level: 'advanced', favorite_sports: ['篮球'] },
++  { username: 'zhouyang', password: 'sportmate123', nickname: '周洋', campus: '铜盘校区', skill_level: 'any', favorite_sports: ['足球'] },
++  { username: 'wuqiang', password: 'sportmate123', nickname: '吴强', campus: '旗山校区', skill_level: 'beginner', favorite_sports: ['跑步'] },
++]
++// seed-demo.mjs 已注册的 4 个账号：这里只登录拿 token
++const seedUsers = ['linzj', 'chenyu', 'liyutong', 'wanghz']
++
++const tokens = {}
++const ids = {}
++for (const u of extraUsers) {
++  try {
++    tokens[u.username] = (await call('/auth/register', { method: 'POST', body: u })).access_token
++  } catch {
++    tokens[u.username] = (await call('/auth/login', { method: 'POST', body: { username: u.username, password: u.password } })).access_token
++  }
++  ids[u.username] = (await call('/me', { token: tokens[u.username] })).id
++  console.log(`user ${u.username} -> ${ids[u.username]}`)
++}
++for (const name of seedUsers) {
++  try {
++    tokens[name] = (await call('/auth/login', { method: 'POST', body: { username: name, password: 'sportmate123' } })).access_token
++    ids[name] = (await call('/me', { token: tokens[name] })).id
++    console.log(`login ${name} -> ${ids[name]}`)
++  } catch (e) {
++    console.warn(`login 失败 ${name}: ${e.message}`)
++  }
++}
++
++const acts = [
++  // [title, sport, campus, location, level, capacity, minutes, joins]
++  // 注意：报名要求"水平一致"，即 活动要求 == 报名者水平（'any' 与任何水平互相兼容）。
++  // 所以报名名单按用户水平配对，避免 400。
++  ['今天晚场羽毛球双打 · 旗山馆', '羽毛球', '旗山校区', '旗山校区体育馆 3 号场', 'intermediate', 4, 90, ['liuwei', 'liyutong']],
++  ['今晚五人制足球 · 铜盘', '足球', '铜盘校区', '铜盘校区足球场', 'any', 10, 180, ['sunjie', 'zhouyang', 'wuqiang', 'linzj']],
++  ['今天乒乓球新手切磋', '乒乓球', '旗山校区', '旗山校区活动中心', 'beginner', 2, 240, ['chenyu', 'zhaomin', 'wuqiang']], // 满员（发起人 + 2 报名）
++  ['明天篮球半场 3v3', '篮球', '铜盘校区', '铜盘校区篮球场', 'advanced', 6, 1500, ['sunjie', 'wanghz']],
++  ['明早晨跑 5 公里', '跑步', '旗山校区', '旗山校区东操场', 'any', 8, 1560, ['wuqiang', 'chenyu']],
++  ['明天网球对拉', '网球', '铜盘校区', '铜盘校区网球场', 'intermediate', 2, 1620, ['liuwei', 'liyutong', 'linzj']], // 满员（发起人 + 2 报名）
++  ['后天江滨骑行 20km', '骑行', '旗山校区', '旗山校区西门集合', 'beginner', 12, 2880, ['zhouyang']],
++  ['后天校游泳馆自由泳', '游泳', '铜盘校区', '铜盘校区游泳馆', 'beginner', 6, 2940, []],
++  ['新手羽毛球教学局', '羽毛球', '旗山校区', '旗山校区体育馆 2 号场', 'beginner', 4, 4320, ['zhaomin', 'wuqiang']],
++  ['周末全场 5v5 摸底', '篮球', '旗山校区', '旗山校区篮球场', 'advanced', 10, 5760, ['sunjie', 'wanghz']],
++  ['下周足球野球局', '足球', '铜盘校区', '铜盘校区足球场', 'intermediate', 12, 8640, []],
++  ['下周环校夜跑', '跑步', '旗山校区', '旗山校区环校路', 'any', 8, 10080, []],
++]
++
++let count = 0
++for (const [title, sport, campus, location, level, capacity, minutes, joins] of acts) {
++  const organizer = joins[0] ?? 'linzj'
++  const created = await call('/activities', {
++    method: 'POST',
++    token: tokens[organizer],
++    body: {
++      title,
++      sport,
++      campus,
++      location,
++      start_time: iso(minutes),
++      end_time: iso(minutes + 120),
++      skill_level: level,
++      capacity,
++      fee: 0,
++    },
++  })
++  for (const j of joins.slice(1)) {
++    await call(`/activities/${created.id}/join`, { method: 'POST', token: tokens[j], body: { note: '' } })
++  }
++  console.log(`activity ${created.id} ${title} (${sport} ${campus}) joins=${joins.length}`)
++  count += 1
++}
++
++const list = await call('/activities?status=open&limit=200')
++console.log(`\n当前 open 活动共 ${list.length} 条`)
++console.log(`满员(已隐藏前) ${list.filter((a) => a.slots_left <= 0).length} 条 / 有空位 ${list.filter((a) => a.slots_left > 0).length} 条`)
+--- /dev/null
++++ b/docs/issue7-activity-list.md
+@@ -0,0 +1,155 @@
++# Issue #7 · Activity list + filters 验收与运行证据
++
++- Issue：<https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy/issues/7>（`S4`，Alpha Sprint 2026-11-21 ~ 11-28）
++- 实现位置：`src/frontend/frontend/src/pages/activities.js`（原生 ES Module + 零依赖）
++- 运行方式：真实后端 `FastAPI`（`127.0.0.1:8000`）+ 前端 `?mock=0`，**不是**离线示意数据
++- 建议提交：`feat(activity-list): wire P-03 to GET /activities with filters (#7)`
++- 后端接口：`GET /activities`（sport / campus / skill_level / status / date_from / date_to / limit / offset）
++
++## 1. 验收标准逐条对照
++
++| Issue 里的 AC | 实现 | 证据 |
++|---|---|---|
++| List loads from API | `pages/activities.js` 通过 `api.getActivities()` 拉取真实接口，一页 `limit=8`、游标 `offset` 等于已取到的原始条数；翻页按 `id` 去重；整页被「只看还有空位」筛掉时提示「继续加载」而不是假空态 | `issue7-list-390.png`（首屏 8 条 + 加载更多）、`issue7-list-page2-390.png`（offset=8，共 10 条）。截图时页面实际请求 `GET /activities?limit=8&offset=0&status=open` 均打到 `127.0.0.1:8000` |
++| Filters combine correctly | 项目 / 校区 / 水平 / 时间四类筛选与「只看还有空位」可任意叠加，重置回默认；时间窗口按本地日历换算成 naive UTC（对齐后端 naive 存储）；快速连续切换筛选时丢弃旧响应（stale-response 竞态防护） | `issue7-list-filter-390.png`（羽毛球 + 旗山校区 → 共 2 条，请求带 URL 编码的 `sport=羽毛球&campus=旗山校区`）、`issue7-list-full-390.png`（状态=已满员 → 2 张满员卡片） |
++| Empty state shown | 无结果显示「没有符合条件的活动」+「重置筛选」出口 | `issue7-list-empty-390.png`（足球 + 旗山校区 → 共 0 条） |
++| No overflow at 320px | 新增 `@media (max-width: 360px)` 护栏 + 卡片标题断词 + 筛选芯片横向滚动 | `issue7-list-320.png`（320×844，页面实测 `scrollWidth == innerWidth == 320`，无横向溢出）与 `issue7-list-desktop.png`（1200×900）对比 |
++
++## 2. 这次改了什么
++
++| 文件 | 改动 | 原因 |
++|---|---|---|
++| `frontend/src/pages/activities.js` | ① 不再把 `only_available` 甩给后端，改为按 `slots_left` 前端过滤，翻页游标始终等于服务端偏移；② 时间筛选统一走 `format.js` 的 `toBackendUtc()`（naive UTC）；③ 翻页按 `id` 去重；④ 整页满员时给「继续加载」提示；⑤ 新增 `reqId` 令牌，快速切换筛选时丢弃旧响应 | 三个真缺陷，见第 3 节 |
++| `frontend/src/shared/format.js` | 新增 `toBackendUtc()` | 时间参数与后端 naive UTC 存储对齐的统一出口 |
++| `frontend/assets/css/app.css` | `.sm-act__title` 加 `overflow-wrap: anywhere`；新增 `@media (max-width: 360px)` 护栏 | AC4 |
++| `tools/verify.mjs` | 新增 G 段 28 项断言（112 → 140 项） | 把四条 AC 变成可重跑的检查 |
++| `tools/shot7.mjs` | 新增：CDP 无头 Edge 截图脚本，支持 `--eval` 先点筛选再截 | 补出筛选组合 / 空态 / 满员 / 翻页四类交互证据 |
++| `tools/seed7.mjs` | 新增：造 5 用户 + 12 场活动（8 种运动 / 2 校区 / 4 档水平 / 多个时间窗 / 2 场满员） | 让列表、分页、筛选、满员标签都有真实数据来源，可复现 |
++| `package.json` | 新增 `{"type": "module"}`（无依赖） | 让 `node tools/verify.mjs` 在含 `"type":"commonjs"` 的父目录下也能跑 |
++| `src/frontend/README.md` | 新增「四点六」联调说明 | 复现步骤写进 README |
++
++## 3. 三个缺陷（根因 + 处置）
++
++### DEF-01 · `only_available` 在分页之后才过滤，列表提前"到底"
++
++- **现象**：勾「只看还有空位」时，后端先按 `limit/offset` 取一页再筛掉满员活动，一页 8 条里被筛掉几条就只剩几条；前端按「返回条数 < 8 ⇒ 没有更多」判断，第 3 屏就显示"已经到底了"。
++- **根因**：`services.list_activities()` 里 `stmt.limit().offset()` 在前、`only_available` 的 Python 过滤在后。
++- **处置**：前端停传该参数、本地按 `status ∈ {open, ongoing} && slots_left > 0` 过滤；建议后端把空位条件下推到 SQL，修好后删掉前端兜底。
++
++### DEF-02 · 时间筛选在真实后端上漏掉"今天"
++
++- **现象**：选「今天」查不到当天活动。
++- **根因**：后端 `start_time` 以 naive UTC 存库，前端原来发带 `Z` 的 ISO 串；SQLite 按字符串比大小，带时区后缀的参数"更长"，同一秒的记录被判成更小，整天被过滤掉。
++- **处置**：前端统一发 naive UTC；`verify.mjs` 锁定「窗口正好 24 小时、起点等于本地今天 0 点」。
++
++### DEF-03 · 快速连续点筛选芯片，旧响应会覆盖新结果
++
++- **现象**：连点两个筛选条件，先发出的慢请求最后返回，把列表打回上一个筛选的结果（截图脚本自动化点击时真实复现）。
++- **根因**：`load()` 没有区分响应与当前筛选的对应关系。
++- **处置**：`state.reqId` 请求令牌，过期响应直接丢弃；`verify.mjs` 用「先放行新请求、再放行旧请求」的受控时序做回归断言。
++
++## 4. 运行截图（真实后端，非 mock）
++
++七张图都在 `?mock=0` 下截取（`mock: null`，请求全部打到 `127.0.0.1:8000`）：
++
++| 截图 | 页面 / 操作 | 内容 |
++|---|---|---|
++| [`shots/issue7-list-390.png`](shots/issue7-list-390.png) | `#/activities` 默认，390×844 | 顶部 8 条+、项目 / 状态 / 时间 / 校区 / 水平五排筛选芯片、「只看还有空位」、活动卡片（运动图标 / 时间 / 校区位置 / 水平徽标 / 报名进度 / 发起人信用分） |
++| [`shots/issue7-list-filter-390.png`](shots/issue7-list-filter-390.png) | 点「羽毛球」+「旗山校区」 | 组合筛选共 2 条、出现「重置筛选」，请求串 `sport=羽毛球&campus=旗山校区&status=open` |
++| [`shots/issue7-list-empty-390.png`](shots/issue7-list-empty-390.png) | 点「足球」+「旗山校区」 | 共 0 条 → 「没有符合条件的活动」空态 + 重置出口 |
++| [`shots/issue7-list-full-390.png`](shots/issue7-list-full-390.png) | 点「已满员」并取消「只看还有空位」 | 2 张满员卡片：已报名 2/2、名额已满、状态标签「已满员」 |
++| [`shots/issue7-list-page2-390.png`](shots/issue7-list-page2-390.png) | 点「加载更多」 | 第二页请求 `offset=8`，底部「已经到底了 · 共 10 条」 |
++| [`shots/issue7-list-320.png`](shots/issue7-list-320.png) | 默认，320×844 | `scrollWidth == innerWidth == 320`，无横向溢出（AC4） |
++| [`shots/issue7-list-desktop.png`](shots/issue7-list-desktop.png) | 默认，1200×900 | 桌面宽度下内容居中（max-width），无横向溢出 |
++
++截图脚本打印的当次请求（默认页）：
++
++```text
++http://127.0.0.1:8000/health
++http://127.0.0.1:8000/sports
++http://127.0.0.1:8000/activities?limit=8&offset=0&status=open
++```
++
++组合筛选页：
++
++```text
++http://127.0.0.1:8000/activities?limit=8&offset=0&sport=%E7%BE%BD%E6%AF%9B%E7%90%83&status=open
++http://127.0.0.1:8000/activities?limit=8&offset=0&sport=%E7%BE%BD%E6%AF%9B%E7%90%83&campus=%E6%97%97%E5%B1%B1%E6%A0%A1%E5%8C%BA&status=open
++```
++
++（中文参数由 `http.js` 的 `URLSearchParams` 自动编码，与后端对接文档一致。）
++
++## 5. 自动化测试
++
++```powershell
++# 前端自检（零依赖）
++cd src/frontend
++node tools/verify.mjs
++```
++
++结果：**全部通过：140 项检查**（原 112 项 + 本次 #7 新增 G 段 28 项）。G 段覆盖：分页游标、id 去重、四类筛选组合、空态、满员整页、时间窗口 naive UTC、320px 静态护栏、stale-response 竞态。
++
++```text
++G. Issue #7 活动列表 + 筛选验收（AC1 列表来自接口 / AC2 组合筛选 / AC3 空态 / AC4 320px）
++  ✓ AC1 列表首屏来自接口且拿满一页
++  ✓ AC1 第二页 offset=8
++  ✓ AC1 重复出现同一活动时按 id 去重
++  ✓ AC2 项目 + 校区两个条件同时生效
++  ✓ AC2 时间参数是 naive UTC（不带 Z），与后端的 naive 存储对齐
++  ✓ AC2 快速切换筛选时，旧响应不覆盖新结果（stale-response 竞态防护）
++  ✓ AC3 整页满员时给出「继续加载」提示而不是空态
++  ✓ AC4 存在 ≤360px 的窄屏护栏规则
++  ...
++全部通过：140 项检查
++```
++
++后端回归（同一台机器，真实依赖跑通）：
++
++```powershell
++cd src/backend
++py -m pytest -q
++# 54 passed, 212 warnings in 7.37s
++```
++
++> 本机跑后端的环境说明：本机可用的 Python 为 3.9 与 3.14，而 `requirements.txt` 里
++> `SQLAlchemy==2.1.2` 要求 Python ≥ 3.11，故使用 **Python 3.14**；pydantic 选用
++> **2.12.5**（2.10 线没有 cp314 的 `pydantic-core` 轮子），其余与团队锁定版本一致：
++> FastAPI 0.115.6 / uvicorn 0.34.0 / SQLAlchemy 2.1.2 / httpx 0.28.1。54 项全过。
++
++## 6. 怎么复现
++
++```powershell
++# 后端（Python 3.11+，首次启动自动建表 + 10 种运动种子数据）
++cd src/backend
++py -m pip install -r requirements.txt -r requirements-dev.txt
++py -m uvicorn main:app --port 8000
++
++# 前端（零依赖）
++cd src/frontend
++node tools/server.mjs            # http://127.0.0.1:5178/frontend/
++node tools/seed-demo.mjs         # 4 用户 / 3 活动 / 4 评价（需空库）
++node tools/seed7.mjs             # 再补 5 用户 / 12 场活动（2 场满员）
++```
++
++浏览器打开（**加 `?mock=0`** 即走真实后端）：
++
++- 活动列表：<http://127.0.0.1:5178/frontend/?mock=0#/activities>
++
++重新出截图：
++
++```powershell
++node tools/shot7.mjs --url="http://127.0.0.1:5178/frontend/?mock=0#/activities" `
++  --out="../docs/shots/issue7-list-390.png" --w=390 --h=844
++node tools/shot7.mjs --url="http://127.0.0.1:5178/frontend/?mock=0#/activities" `
++  --out="../docs/shots/issue7-list-empty-390.png" --w=390 --h=844 `
++  --eval="document.querySelector('[data-name=\"sport\"][data-value=\"足球\"]').click();document.querySelector('[data-name=\"campus\"][data-value=\"旗山校区\"]').click()"
++```
++
++## 7. 边界与说明
++
++- 只联调了**本地** FastAPI 实例；公网 Render 实例、多人并发未测。
++- DEF-01 / DEF-02 的根因在 `src/backend/services.py`，本次**未改后端代码**（避免跨组冲突），
++  只在前端兜底并给出建议修法，需后端同学跟进。
++- 演示数据（9 个用户、15 场活动）由 `tools/seed-demo.mjs` + `tools/seed7.mjs` 生成，不是真实用户信息。
++- 截图里的时间显示为本地时间（后端返回不带时区的 UTC 串，`shared/format.js` 已补 `Z` 再换算）。
++- 截图脚本必须在普通桌面环境跑：DSH 沙盒禁止 Chromium 的命名管道 IPC，无头浏览器在沙盒内起不来。
+--- /dev/null
++++ b/docs/blog-log2-section-issue7.md
+@@ -0,0 +1,70 @@
++## 冲刺日志 2（2026-11-24）· 前端：活动列表接真实后端（Issue #7）
++
++> 这段可以直接粘进冲刺日志第 2 篇的「本节点完成情况」。配套证据：`docs/issue7-activity-list.md`、
++> `docs/shots/issue7-list-*.png`（7 张真实后端运行截图）、`node tools/verify.mjs` 的 G 段 28 项。
++
++### 本节点做了什么
++
++本节点前端组的主线是 **P-03 活动列表（Issue #7）**：把页面从内置示意数据切到真实接口
++`GET /activities`，并把「四类筛选 + 分页 + 空态」这条最容易出错的路径逐个对过一遍，
++全部在 `?mock=0`（真实 FastAPI）下留了运行截图。
++
++- **列表与分页**：首屏 `limit=8&offset=0`，翻页游标严格等于"已经取到的原始条数"，
++  新一页按 `id` 去重后再并入；第二页截图能看到 `offset=8` 与「已经到底了 · 共 10 条」。
++- **筛选**：项目 / 校区 / 水平 / 时间四类条件任意叠加（截图证据：羽毛球 + 旗山校区 → 共 2 条），
++  另有「只看还有空位」与「重置筛选」；快速连点筛选芯片时旧响应会被请求令牌丢弃，不会把列表打回原形。
++- **空态与满员**：无结果显示「没有符合条件的活动」+ 重置出口（足球 + 旗山校区 → 共 0 条）；
++  状态切到「已满员」能看到 2 张"名额已满"卡片。
++- **320px 护栏**：标题断词、卡片底部允许换行、芯片横向滚动；320×844 实测 `scrollWidth == 320`，
++  无横向溢出（AC4）。
++
++### 三个真问题（本轮最有价值的部分）
++
++**① 勾了「只看还有空位」，列表 5 条就"到底"了。**
++后端 `only_available` 是"先按 limit/offset 取一页、再在内存里筛掉满员活动"，一页被筛掉几条就只剩几条；
++前端按「返回条数 < 8 ⇒ 没有更多」判断，第三屏就停。现在改成前端不传该参数、拿到整页后按
++`slots_left` 本地过滤，游标不再错位（DEF-01，建议后端把条件下推到 SQL）。
++
++**② 选「今天」，一条今天的活动都查不出来。**
++后端 `start_time` 以 naive UTC 存库，前端原来发带 `Z` 的串，SQLite 按字符串比大小，当天整天被过滤。
++现在时间筛选统一走 `toBackendUtc()` 发 naive UTC，并用断言锁定"窗口正好 24 小时、起点等于本地今天 0 点"（DEF-02）。
++
++**③ 快速连点筛选芯片，旧响应会覆盖新结果。**
++截图脚本自动化点击时真实复现：先点的慢请求最后返回，把列表打回上一个筛选。已加 `reqId` 请求令牌，
++过期响应直接丢弃，并用"先放行新请求、再放行旧请求"的受控时序做了回归断言（DEF-03）。
++
++三个问题的共同点：**界面上看起来只是"少了几条/结果不对"，背后都是契约或时序没对齐**。
++所以这轮把程序化验收补齐：`tools/verify.mjs` 新增 G 段 28 项，总数从 112 项升到 **140 项全部通过**；
++后端 54 项 pytest 也在一台真实依赖的机器上全过。
++
++### 证据
++
++```text
++$ cd src/frontend && node tools/verify.mjs
++G. Issue #7 活动列表 + 筛选验收（AC1 列表来自接口 / AC2 组合筛选 / AC3 空态 / AC4 320px）
++  ✓ AC1 列表首屏来自接口且拿满一页
++  ✓ AC1 第二页 offset=8
++  ✓ AC2 时间参数是 naive UTC（不带 Z），与后端的 naive 存储对齐
++  ✓ AC2 快速切换筛选时，旧响应不覆盖新结果（stale-response 竞态防护）
++  ✓ AC3 整页满员时给出「继续加载」提示而不是空态
++  ...
++全部通过：140 项检查
++```
++
++运行截图（真实后端 `?mock=0`，请求全部打到 `127.0.0.1:8000`）：
++
++| 截图 | 内容 |
++|---|---|
++| `issue7-list-390.png` | 默认列表：8 条+、五排筛选芯片、活动卡片 |
++| `issue7-list-filter-390.png` | 羽毛球 + 旗山校区 → 共 2 条 |
++| `issue7-list-empty-390.png` | 足球 + 旗山校区 → 空态 |
++| `issue7-list-full-390.png` | 已满员 → 2 张「名额已满」卡片 |
++| `issue7-list-page2-390.png` | 加载更多 → offset=8，共 10 条 |
++| `issue7-list-320.png` | 320×844 无横向溢出 |
++| `issue7-list-desktop.png` | 1200×900 桌面宽度 |
++
++### 下一节点计划
++
++1. 按 DEF-01 / DEF-02 的建议与后端组对齐修法，修好后删掉前端兜底代码；
++2. 把 `data-testid` 补齐给测试组做 E2E，重点覆盖「筛选 → 报名 → 返回列表」这条链路；
++3. 开始 #13 我的局 / #14 评价页的联调。
+--- /dev/null
++++ b/docs/shots/issue7-list-390.html
+@@ -0,0 +1,1623 @@
++<!doctype html>
++<html lang="zh-CN">
++<head>
++<meta charset="utf-8" />
++<meta name="viewport" content="width=device-width, initial-scale=1" />
++<title>Issue #7 活动列表 · 390px 静态快照</title>
++<style>
++/* ==========================================================================
++   动搭 SportMate · 设计系统
++   --------------------------------------------------------------------------
++   这一份 CSS 同时服务两个交付物：
++     1) frontend/   真实可用前端（连后端或离线 mock）
++     2) prototype/  界面原型（复用同一套样式，保证原型与实现一致）
++   因此这里只放"与数据无关"的视觉规则，不放任何业务逻辑。
++   ========================================================================== */
++
++/* ---------- 1. 设计令牌 ---------- */
++:root {
++  /* 主色：活力橙（运动感），辅助色：青绿（信用分/成功） */
++  --brand: #ff6a3d;
++  --brand-600: #f2542d;
++  --brand-100: #fff1eb;
++  --accent: #12b5a5;
++  --accent-100: #e6f8f6;
++
++  /* 中性色阶 */
++  --ink: #16181d;
++  --ink-2: #4a5060;
++  --ink-3: #7b8398;
++  --line: #edeff4;
++  --line-2: #e0e4ec;
++  --surface: #ffffff;
++  --surface-2: #f6f7fb;
++  --bg: #f2f4f9;
++
++  /* 语义色 */
++  --ok: #10a37f;
++  --ok-bg: #e8f8f2;
++  --warn: #c07800;
++  --warn-bg: #fff6e0;
++  --danger: #d92d4b;
++  --danger-bg: #fdecef;
++  --info: #2f6fd0;
++  --info-bg: #eaf2fe;
++
++  /* 形状与阴影 */
++  --r-sm: 8px;
++  --r: 12px;
++  --r-lg: 18px;
++  --r-pill: 999px;
++  --sh-1: 0 1px 2px rgba(22, 24, 29, 0.05);
++  --sh-2: 0 4px 14px rgba(22, 24, 29, 0.07);
++  --sh-3: 0 12px 34px rgba(22, 24, 29, 0.12);
++
++  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
++    "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
++  --font-num: "SF Mono", "JetBrains Mono", ui-monospace, Consolas, monospace;
++}
++
++/* ---------- 2. 归零 ---------- */
++*,
++*::before,
++*::after {
++  box-sizing: border-box;
++}
++html,
++body {
++  margin: 0;
++  padding: 0;
++}
++body {
++  font-family: var(--font);
++  color: var(--ink);
++  background: var(--bg);
++  font-size: 15px;
++  line-height: 1.55;
++  -webkit-font-smoothing: antialiased;
++  text-rendering: optimizeLegibility;
++}
++h1,
++h2,
++h3,
++h4,
++p,
++ul,
++ol,
++figure {
++  margin: 0;
++}
++ul,
++ol {
++  padding: 0;
++  list-style: none;
++}
++button,
++input,
++select,
++textarea {
++  font: inherit;
++  color: inherit;
++}
++a {
++  color: var(--brand-600);
++  text-decoration: none;
++}
++a:hover {
++  text-decoration: underline;
++}
++img,
++svg {
++  display: block;
++  max-width: 100%;
++}
++
++/* ---------- 3. 布局骨架 ---------- */
++.sm-shell {
++  min-height: 100vh;
++  display: flex;
++  flex-direction: column;
++  background: var(--bg);
++}
++.sm-main {
++  flex: 1;
++  width: 100%;
++  max-width: 520px;
++  margin: 0 auto;
++  padding: 16px 16px 96px;
++}
++.sm-main--wide {
++  max-width: 900px;
++}
++.sm-stack > * + * {
++  margin-top: 14px;
++}
++.sm-row {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++.sm-row--wrap {
++  flex-wrap: wrap;
++}
++.sm-row--between {
++  justify-content: space-between;
++}
++.sm-spacer {
++  flex: 1;
++}
++.sm-hide {
++  display: none !important;
++}
++
++/* ---------- 4. 顶部栏 ---------- */
++.sm-appbar {
++  position: sticky;
++  top: 0;
++  z-index: 20;
++  background: rgba(255, 255, 255, 0.86);
++  backdrop-filter: saturate(180%) blur(12px);
++  border-bottom: 1px solid var(--line);
++}
++.sm-appbar__inner {
++  max-width: 520px;
++  margin: 0 auto;
++  padding: 12px 16px;
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++.sm-appbar__title {
++  font-size: 17px;
++  font-weight: 650;
++  letter-spacing: -0.01em;
++}
++.sm-appbar__sub {
++  font-size: 12px;
++  color: var(--ink-3);
++}
++.sm-brand {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++}
++.sm-brand__mark {
++  width: 30px;
++  height: 30px;
++  border-radius: 9px;
++  background: linear-gradient(135deg, var(--brand) 0%, #ff9166 100%);
++  color: #fff;
++  display: grid;
++  place-items: center;
++  font-size: 16px;
++  box-shadow: 0 3px 10px rgba(255, 106, 61, 0.32);
++}
++.sm-brand__name {
++  font-size: 16px;
++  font-weight: 700;
++  letter-spacing: -0.02em;
++}
++.sm-backbtn {
++  width: 34px;
++  height: 34px;
++  border-radius: 10px;
++  border: 1px solid var(--line-2);
++  background: #fff;
++  cursor: pointer;
++  display: grid;
++  place-items: center;
++  font-size: 16px;
++  color: var(--ink-2);
++  flex: none;
++}
++.sm-backbtn:hover {
++  background: var(--surface-2);
++}
++
++/* ---------- 5. 卡片 ---------- */
++.sm-card {
++  background: var(--surface);
++  border: 1px solid var(--line);
++  border-radius: var(--r-lg);
++  box-shadow: var(--sh-1);
++  padding: 16px;
++}
++.sm-card--flat {
++  box-shadow: none;
++}
++.sm-card--brand {
++  background: linear-gradient(140deg, #fff 0%, var(--brand-100) 100%);
++  border-color: #ffd9c9;
++}
++.sm-card__title {
++  font-size: 15px;
++  font-weight: 650;
++  margin-bottom: 10px;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++.sm-card__hint {
++  font-size: 12.5px;
++  color: var(--ink-3);
++  line-height: 1.6;
++}
++.sm-divider {
++  height: 1px;
++  background: var(--line);
++  margin: 12px 0;
++  border: 0;
++}
++
++/* ---------- 6. 按钮 ---------- */
++.sm-btn {
++  --btn-bg: #fff;
++  --btn-fg: var(--ink);
++  --btn-bd: var(--line-2);
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 6px;
++  padding: 10px 16px;
++  min-height: 42px;
++  border-radius: var(--r);
++  border: 1px solid var(--btn-bd);
++  background: var(--btn-bg);
++  color: var(--btn-fg);
++  font-size: 14.5px;
++  font-weight: 600;
++  cursor: pointer;
++  transition: transform 0.06s ease, filter 0.15s ease, background 0.15s ease;
++  white-space: nowrap;
++  user-select: none;
++}
++.sm-btn:hover:not(:disabled) {
++  filter: brightness(0.97);
++}
++.sm-btn:active:not(:disabled) {
++  transform: translateY(1px);
++}
++.sm-btn:disabled {
++  opacity: 0.45;
++  cursor: not-allowed;
++}
++.sm-btn--primary {
++  --btn-bg: var(--brand);
++  --btn-fg: #fff;
++  --btn-bd: var(--brand);
++  box-shadow: 0 4px 12px rgba(255, 106, 61, 0.28);
++}
++.sm-btn--accent {
++  --btn-bg: var(--accent);
++  --btn-fg: #fff;
++  --btn-bd: var(--accent);
++}
++.sm-btn--ghost {
++  --btn-bg: var(--surface-2);
++  --btn-bd: transparent;
++  color: var(--ink-2);
++}
++.sm-btn--danger {
++  --btn-fg: var(--danger);
++  --btn-bd: #f6c9d2;
++  --btn-bg: #fff;
++}
++.sm-btn--block {
++  width: 100%;
++}
++.sm-btn--sm {
++  min-height: 34px;
++  padding: 6px 12px;
++  font-size: 13px;
++  border-radius: 10px;
++}
++.sm-btn--lg {
++  min-height: 50px;
++  font-size: 16px;
++  border-radius: 14px;
++}
++
++/* ---------- 7. 表单 ---------- */
++.sm-field {
++  display: block;
++}
++.sm-field + .sm-field {
++  margin-top: 12px;
++}
++.sm-label {
++  display: block;
++  font-size: 12.5px;
++  font-weight: 600;
++  color: var(--ink-2);
++  margin-bottom: 6px;
++}
++.sm-label__opt {
++  font-weight: 500;
++  color: var(--ink-3);
++}
++.sm-input,
++.sm-select,
++.sm-textarea {
++  width: 100%;
++  padding: 11px 13px;
++  border: 1px solid var(--line-2);
++  border-radius: var(--r);
++  background: #fff;
++  outline: none;
++  transition: border-color 0.15s ease, box-shadow 0.15s ease;
++}
++.sm-textarea {
++  min-height: 76px;
++  resize: vertical;
++}
++.sm-input:focus,
++.sm-select:focus,
++.sm-textarea:focus {
++  border-color: var(--brand);
++  box-shadow: 0 0 0 3px rgba(255, 106, 61, 0.14);
++}
++.sm-input::placeholder,
++.sm-textarea::placeholder {
++  color: #a9b0c0;
++}
++.sm-input[type="number"] {
++  font-family: var(--font-num);
++}
++.sm-grid2 {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 12px;
++}
++@media (max-width: 420px) {
++  .sm-grid2 {
++    grid-template-columns: 1fr;
++  }
++}
++.sm-check {
++  display: inline-flex;
++  align-items: center;
++  gap: 8px;
++  font-size: 13.5px;
++  cursor: pointer;
++}
++.sm-check input {
++  width: 16px;
++  height: 16px;
++  accent-color: var(--brand);
++  flex: none;
++}
++.sm-switch {
++  display: inline-flex;
++  background: var(--surface-2);
++  border-radius: var(--r-pill);
++  padding: 3px;
++  gap: 2px;
++}
++.sm-switch button {
++  border: 0;
++  background: transparent;
++  padding: 7px 16px;
++  border-radius: var(--r-pill);
++  font-size: 13.5px;
++  font-weight: 600;
++  color: var(--ink-3);
++  cursor: pointer;
++}
++.sm-switch button[aria-pressed="true"] {
++  background: #fff;
++  color: var(--ink);
++  box-shadow: var(--sh-1);
++}
++
++/* ---------- 8. 标签 / 徽标 ---------- */
++.sm-tag {
++  display: inline-flex;
++  align-items: center;
++  gap: 4px;
++  padding: 2px 8px;
++  border-radius: 6px;
++  background: var(--surface-2);
++  color: var(--ink-2);
++  font-size: 11.5px;
++  font-weight: 600;
++  line-height: 1.7;
++  white-space: nowrap;
++}
++.sm-tag--brand {
++  background: var(--brand-100);
++  color: var(--brand-600);
++}
++.sm-tag--ok {
++  background: var(--ok-bg);
++  color: var(--ok);
++}
++.sm-tag--warn {
++  background: var(--warn-bg);
++  color: var(--warn);
++}
++.sm-tag--danger {
++  background: var(--danger-bg);
++  color: var(--danger);
++}
++.sm-tag--info {
++  background: var(--info-bg);
++  color: var(--info);
++}
++.sm-tag--ghost {
++  background: transparent;
++  border: 1px solid var(--line-2);
++  color: var(--ink-3);
++}
++.sm-dot {
++  width: 6px;
++  height: 6px;
++  border-radius: 50%;
++  background: currentColor;
++  flex: none;
++}
++
++/* ---------- 9. 活动卡片 ---------- */
++.sm-act {
++  position: relative;
++  display: block;
++  width: 100%;
++  text-align: left;
++  background: var(--surface);
++  border: 1px solid var(--line);
++  border-radius: var(--r-lg);
++  padding: 14px;
++  box-shadow: var(--sh-1);
++  cursor: pointer;
++  transition: box-shadow 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
++}
++.sm-act:hover {
++  box-shadow: var(--sh-2);
++  border-color: #ffd9c9;
++}
++.sm-act:active {
++  transform: scale(0.995);
++}
++.sm-act__head {
++  display: flex;
++  gap: 10px;
++  align-items: flex-start;
++}
++.sm-act__sport {
++  width: 42px;
++  height: 42px;
++  border-radius: 12px;
++  background: var(--brand-100);
++  display: grid;
++  place-items: center;
++  font-size: 21px;
++  flex: none;
++}
++.sm-act__title {
++  font-size: 15.5px;
++  font-weight: 660;
++  letter-spacing: -0.01em;
++  line-height: 1.35;
++  display: -webkit-box;
++  -webkit-line-clamp: 2;
++  -webkit-box-orient: vertical;
++  overflow: hidden;
++  overflow-wrap: anywhere;
++}
++.sm-act__meta {
++  font-size: 12.5px;
++  color: var(--ink-3);
++  margin-top: 3px;
++  display: flex;
++  flex-wrap: wrap;
++  align-items: center;
++  gap: 4px 8px;
++}
++.sm-act__meta b {
++  color: var(--ink-2);
++  font-weight: 600;
++}
++.sm-act__tags {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++  margin-top: 10px;
++}
++.sm-act__foot {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 10px;
++  margin-top: 12px;
++  padding-top: 11px;
++  border-top: 1px dashed var(--line-2);
++}
++.sm-act__org {
++  font-size: 12px;
++  color: var(--ink-3);
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  min-width: 0;
++}
++.sm-act__org b {
++  color: var(--ink-2);
++  font-weight: 600;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++.sm-avatar {
++  width: 22px;
++  height: 22px;
++  border-radius: 50%;
++  background: var(--surface-2);
++  border: 1px solid var(--line-2);
++  display: grid;
++  place-items: center;
++  font-size: 11px;
++  font-weight: 700;
++  color: var(--ink-3);
++  flex: none;
++}
++.sm-avatar--lg {
++  width: 46px;
++  height: 46px;
++  font-size: 18px;
++}
++
++/* 座位进度条 */
++.sm-seats {
++  margin-top: 11px;
++}
++.sm-seats__bar {
++  height: 6px;
++  border-radius: 99px;
++  background: var(--surface-2);
++  overflow: hidden;
++}
++.sm-seats__fill {
++  height: 100%;
++  border-radius: 99px;
++  background: linear-gradient(90deg, var(--accent) 0%, #4fd6c6 100%);
++}
++.sm-seats__fill--full {
++  background: linear-gradient(90deg, #f0a500 0%, #ffc94d 100%);
++}
++.sm-seats__txt {
++  display: flex;
++  justify-content: space-between;
++  font-size: 11.5px;
++  color: var(--ink-3);
++  margin-top: 5px;
++}
++.sm-seats__txt b {
++  color: var(--ink-2);
++  font-family: var(--font-num);
++}
++
++/* ---------- 10. 匹配理由 ---------- */
++.sm-reason {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++  margin-top: 10px;
++}
++.sm-score {
++  margin-left: auto;
++  font-size: 11.5px;
++  font-weight: 700;
++  color: var(--brand-600);
++  background: var(--brand-100);
++  padding: 2px 9px;
++  border-radius: var(--r-pill);
++  font-family: var(--font-num);
++}
++
++/* ---------- 11. 一句话找局 ---------- */
++.sm-nlp {
++  background: linear-gradient(140deg, #2b2f3a 0%, #454b5c 100%);
++  border-radius: var(--r-lg);
++  padding: 16px;
++  color: #fff;
++  box-shadow: var(--sh-2);
++}
++.sm-nlp__label {
++  font-size: 12.5px;
++  color: rgba(255, 255, 255, 0.66);
++  margin-bottom: 8px;
++  display: flex;
++  align-items: center;
++  gap: 6px;
++}
++.sm-nlp__row {
++  display: flex;
++  gap: 8px;
++}
++.sm-nlp__input {
++  flex: 1;
++  border: 0;
++  border-radius: var(--r);
++  padding: 12px 13px;
++  background: rgba(255, 255, 255, 0.12);
++  color: #fff;
++  outline: none;
++  min-width: 0;
++}
++.sm-nlp__input::placeholder {
++  color: rgba(255, 255, 255, 0.5);
++}
++.sm-nlp .sm-btn--primary {
++  box-shadow: none;
++}
++.sm-nlp__chips {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++  margin-top: 10px;
++}
++.sm-nlp__chip {
++  border: 1px solid rgba(255, 255, 255, 0.22);
++  background: rgba(255, 255, 255, 0.06);
++  color: rgba(255, 255, 255, 0.88);
++  border-radius: var(--r-pill);
++  padding: 4px 11px;
++  font-size: 12px;
++  cursor: pointer;
++}
++.sm-nlp__chip:hover {
++  background: rgba(255, 255, 255, 0.14);
++}
++
++/* ---------- 12. 筛选条 ---------- */
++.sm-filters {
++  display: flex;
++  gap: 8px;
++  overflow-x: auto;
++  padding: 2px 0 4px;
++  margin: 0 -16px;
++  padding-left: 16px;
++  padding-right: 16px;
++  scrollbar-width: none;
++}
++.sm-filters::-webkit-scrollbar {
++  display: none;
++}
++.sm-chip {
++  border: 1px solid var(--line-2);
++  background: #fff;
++  border-radius: var(--r-pill);
++  padding: 7px 14px;
++  font-size: 13px;
++  font-weight: 600;
++  color: var(--ink-2);
++  cursor: pointer;
++  white-space: nowrap;
++  flex: none;
++}
++.sm-chip[aria-pressed="true"] {
++  background: var(--ink);
++  border-color: var(--ink);
++  color: #fff;
++}
++.sm-chip--mini {
++  padding: 5px 11px;
++  font-size: 12.5px;
++}
++
++/* ---------- 13. 信用分 ---------- */
++.sm-credit {
++  display: flex;
++  align-items: center;
++  gap: 16px;
++}
++.sm-credit__ring {
++  flex: none;
++  width: 78px;
++  height: 78px;
++  border-radius: 50%;
++  display: grid;
++  place-items: center;
++  position: relative;
++}
++.sm-credit__num {
++  font-family: var(--font-num);
++  font-size: 25px;
++  font-weight: 700;
++  line-height: 1;
++}
++.sm-credit__unit {
++  font-size: 10.5px;
++  color: var(--ink-3);
++  display: block;
++  text-align: center;
++  margin-top: 3px;
++}
++.sm-credit__stats {
++  display: grid;
++  grid-template-columns: repeat(3, 1fr);
++  gap: 8px;
++  flex: 1;
++}
++.sm-stat {
++  text-align: center;
++  background: var(--surface-2);
++  border-radius: var(--r);
++  padding: 8px 4px;
++}
++.sm-stat__num {
++  font-family: var(--font-num);
++  font-size: 16px;
++  font-weight: 700;
++}
++.sm-stat__label {
++  font-size: 11px;
++  color: var(--ink-3);
++  margin-top: 1px;
++}
++
++/* ---------- 14. 时间线 / 列表行 ---------- */
++.sm-list {
++  border-radius: var(--r-lg);
++  background: var(--surface);
++  border: 1px solid var(--line);
++  overflow: hidden;
++}
++.sm-list__item {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  padding: 13px 15px;
++  cursor: pointer;
++  background: none;
++  border: 0;
++  width: 100%;
++  text-align: left;
++}
++.sm-list__item + .sm-list__item {
++  border-top: 1px solid var(--line);
++}
++.sm-list__item:hover {
++  background: var(--surface-2);
++}
++.sm-list__icon {
++  width: 34px;
++  height: 34px;
++  border-radius: 10px;
++  background: var(--surface-2);
++  display: grid;
++  place-items: center;
++  font-size: 17px;
++  flex: none;
++}
++.sm-list__body {
++  flex: 1;
++  min-width: 0;
++}
++.sm-list__title {
++  font-size: 14.5px;
++  font-weight: 600;
++}
++.sm-list__desc {
++  font-size: 12px;
++  color: var(--ink-3);
++  margin-top: 1px;
++}
++.sm-list__chev {
++  color: #c2c8d6;
++  font-size: 17px;
++  flex: none;
++}
++
++/* ---------- 15. 详情页 ---------- */
++.sm-hero {
++  background: var(--surface);
++  border-bottom: 1px solid var(--line);
++  padding: 18px 16px 20px;
++}
++.sm-hero__inner {
++  max-width: 520px;
++  margin: 0 auto;
++}
++.sm-hero__title {
++  font-size: 21px;
++  font-weight: 700;
++  letter-spacing: -0.02em;
++  line-height: 1.3;
++}
++.sm-facts {
++  display: grid;
++  gap: 10px;
++}
++.sm-fact {
++  display: flex;
++  gap: 10px;
++  align-items: flex-start;
++  font-size: 13.5px;
++}
++.sm-fact__k {
++  width: 68px;
++  flex: none;
++  color: var(--ink-3);
++}
++.sm-fact__v {
++  flex: 1;
++  color: var(--ink);
++  font-weight: 500;
++}
++.sm-code {
++  display: flex;
++  gap: 8px;
++  margin: 6px 0 2px;
++}
++.sm-code__cell {
++  flex: 1;
++  background: var(--ink);
++  color: #fff;
++  border-radius: var(--r);
++  font-family: var(--font-num);
++  font-size: 26px;
++  font-weight: 700;
++  text-align: center;
++  padding: 10px 0;
++  letter-spacing: 2px;
++}
++.sm-member {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding: 10px 0;
++}
++.sm-member + .sm-member {
++  border-top: 1px solid var(--line);
++}
++.sm-member__body {
++  flex: 1;
++  min-width: 0;
++}
++.sm-member__name {
++  font-size: 14px;
++  font-weight: 620;
++}
++.sm-member__sub {
++  font-size: 11.5px;
++  color: var(--ink-3);
++}
++
++/* ---------- 16. 反馈条 ---------- */
++.sm-alert {
++  display: flex;
++  gap: 9px;
++  align-items: flex-start;
++  padding: 11px 13px;
++  border-radius: var(--r);
++  font-size: 13px;
++  line-height: 1.5;
++}
++.sm-alert--error {
++  background: var(--danger-bg);
++  color: #8f1730;
++}
++.sm-alert--ok {
++  background: var(--ok-bg);
++  color: #0a6b52;
++}
++.sm-alert--info {
++  background: var(--info-bg);
++  color: #1c4e97;
++}
++.sm-alert--warn {
++  background: var(--warn-bg);
++  color: #8a5800;
++}
++.sm-alert__icon {
++  flex: none;
++  font-size: 14px;
++  line-height: 1.4;
++}
++
++/* ---------- 17. 空态 / 加载 ---------- */
++.sm-empty {
++  text-align: center;
++  padding: 40px 20px;
++  color: var(--ink-3);
++}
++.sm-empty__icon {
++  font-size: 34px;
++  margin-bottom: 8px;
++  opacity: 0.75;
++}
++.sm-empty__title {
++  font-size: 14.5px;
++  font-weight: 600;
++  color: var(--ink-2);
++}
++.sm-empty__desc {
++  font-size: 12.5px;
++  margin-top: 4px;
++}
++.sm-skel {
++  border-radius: var(--r);
++  background: linear-gradient(90deg, #eef0f5 25%, #f6f7fa 37%, #eef0f5 63%);
++  background-size: 400% 100%;
++  animation: sm-shimmer 1.3s ease infinite;
++}
++@keyframes sm-shimmer {
++  0% {
++    background-position: 100% 50%;
++  }
++  100% {
++    background-position: 0 50%;
++  }
++}
++
++/* ---------- 18. 底部标签栏 ---------- */
++.sm-tabbar {
++  position: fixed;
++  left: 0;
++  right: 0;
++  bottom: 0;
++  z-index: 30;
++  background: rgba(255, 255, 255, 0.92);
++  backdrop-filter: saturate(180%) blur(14px);
++  border-top: 1px solid var(--line);
++  padding-bottom: env(safe-area-inset-bottom);
++}
++.sm-tabbar__inner {
++  max-width: 520px;
++  margin: 0 auto;
++  display: grid;
++  grid-template-columns: repeat(4, 1fr);
++}
++.sm-tab {
++  border: 0;
++  background: none;
++  padding: 8px 0 9px;
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  gap: 2px;
++  color: var(--ink-3);
++  font-size: 10.5px;
++  font-weight: 600;
++  cursor: pointer;
++}
++.sm-tab__icon {
++  font-size: 19px;
++  line-height: 1.1;
++  filter: grayscale(1);
++  opacity: 0.62;
++}
++.sm-tab[aria-current="page"] {
++  color: var(--brand-600);
++}
++.sm-tab[aria-current="page"] .sm-tab__icon {
++  filter: none;
++  opacity: 1;
++}
++.sm-fab {
++  position: fixed;
++  right: max(16px, calc(50% - 260px + 16px));
++  bottom: 78px;
++  z-index: 31;
++  width: 54px;
++  height: 54px;
++  border-radius: 18px;
++  border: 0;
++  background: var(--brand);
++  color: #fff;
++  font-size: 25px;
++  cursor: pointer;
++  box-shadow: 0 8px 22px rgba(255, 106, 61, 0.42);
++  display: grid;
++  place-items: center;
++  line-height: 1;
++}
++.sm-fab:active {
++  transform: translateY(1px);
++}
++
++/* ---------- 19. 认证页 ---------- */
++.sm-auth {
++  min-height: 100vh;
++  display: grid;
++  place-items: center;
++  padding: 24px 16px;
++  background: radial-gradient(120% 80% at 50% 0%, #fff3ee 0%, var(--bg) 58%);
++}
++.sm-auth__card {
++  width: 100%;
++  max-width: 392px;
++}
++.sm-auth__logo {
++  width: 60px;
++  height: 60px;
++  border-radius: 19px;
++  background: linear-gradient(135deg, var(--brand) 0%, #ff9166 100%);
++  color: #fff;
++  display: grid;
++  place-items: center;
++  font-size: 30px;
++  margin: 0 auto 14px;
++  box-shadow: 0 10px 26px rgba(255, 106, 61, 0.36);
++}
++.sm-auth__title {
++  text-align: center;
++  font-size: 23px;
++  font-weight: 720;
++  letter-spacing: -0.02em;
++}
++.sm-auth__sub {
++  text-align: center;
++  font-size: 13px;
++  color: var(--ink-3);
++  margin: 5px 0 20px;
++}
++.sm-auth__foot {
++  text-align: center;
++  font-size: 12px;
++  color: var(--ink-3);
++  margin-top: 16px;
++  line-height: 1.7;
++}
++
++/* ---------- 20. 弹层 ---------- */
++.sm-sheet {
++  position: fixed;
++  inset: 0;
++  z-index: 60;
++  display: flex;
++  align-items: flex-end;
++  justify-content: center;
++  background: rgba(18, 20, 26, 0.44);
++  padding: 0;
++}
++.sm-sheet__panel {
++  background: #fff;
++  width: 100%;
++  max-width: 520px;
++  border-radius: 20px 20px 0 0;
++  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
++  max-height: 88vh;
++  overflow-y: auto;
++  box-shadow: var(--sh-3);
++}
++.sm-sheet__head {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 12px;
++  margin-bottom: 12px;
++}
++.sm-sheet__title {
++  font-size: 16.5px;
++  font-weight: 680;
++}
++@media (min-width: 560px) {
++  .sm-sheet {
++    align-items: center;
++  }
++  .sm-sheet__panel {
++    border-radius: 20px;
++    max-width: 460px;
++  }
++}
++
++/* ---------- 21. 星评 ---------- */
++.sm-stars {
++  display: flex;
++  gap: 6px;
++}
++.sm-star {
++  border: 0;
++  background: none;
++  font-size: 26px;
++  line-height: 1;
++  cursor: pointer;
++  color: #d9dde7;
++  padding: 0;
++}
++.sm-star[aria-checked="true"] {
++  color: #ffb020;
++}
++.sm-bars {
++  display: grid;
++  gap: 6px;
++}
++.sm-bar {
++  display: grid;
++  grid-template-columns: 68px 1fr 34px;
++  align-items: center;
++  gap: 8px;
++  font-size: 12px;
++  color: var(--ink-3);
++}
++.sm-bar__track {
++  display: block;
++  height: 6px;
++  border-radius: 99px;
++  background: var(--surface-2);
++  overflow: hidden;
++}
++.sm-bar__fill {
++  display: block;
++  height: 100%;
++  border-radius: 99px;
++  background: #ffb020;
++}
++.sm-bar__num {
++  text-align: right;
++  font-family: var(--font-num);
++  color: var(--ink-2);
++}
++
++/* ---------- 22. 离线提示 ---------- */
++.sm-offline {
++  background: #2b2f3a;
++  color: #fff;
++  font-size: 12px;
++  text-align: center;
++  padding: 6px 12px;
++}
++.sm-offline b {
++  color: #ffd08a;
++}
++
++/* ---------- 23. 桌面端适配 ---------- */
++@media (min-width: 900px) {
++  .sm-main,
++  .sm-appbar__inner,
++  .sm-hero__inner {
++    max-width: 760px;
++  }
++  .sm-act-grid {
++    display: grid;
++    grid-template-columns: 1fr 1fr;
++    gap: 14px;
++  }
++  .sm-act-grid > * + * {
++    margin-top: 0;
++  }
++}
++
++
++/* ---------- 24. 320px 护栏（Issue #7 AC4：窄屏不横向溢出） ---------- */
++/*
++ * 320px 下最容易溢出的三处：顶栏两侧留白 + 「发起」按钮、卡片底部
++ * 「时间 / 名额 / 报名」挤在一行、以及筛选芯片整排铺开。
++ * 这里只收留白、允许换行，不改任何字号与颜色，视觉上与 390px 保持一致。
++ */
++@media (max-width: 360px) {
++  .sm-main {
++    padding-left: 12px;
++    padding-right: 12px;
++  }
++  .sm-appbar__inner {
++    padding-left: 12px;
++    padding-right: 12px;
++    gap: 8px;
++  }
++  .sm-act__foot {
++    flex-wrap: wrap;
++    gap: 8px;
++  }
++  .sm-act__meta {
++    gap: 2px 6px;
++  }
++  .sm-btn--sm {
++    padding-left: 10px;
++    padding-right: 10px;
++  }
++  .sm-chip {
++    padding-left: 11px;
++    padding-right: 11px;
++  }
++  .sm-filters {
++    margin-left: -12px;
++    margin-right: -12px;
++    padding-left: 12px;
++    padding-right: 12px;
++  }
++}
++
++/* 快照专用外壳：把页面放进一个 390px 的手机框里，方便直接截图 */
++.snap-stage { background: #eef1f5; min-height: 100vh; padding: 24px 12px; display: flex; justify-content: center; }
++.snap-frame { width: 390px; max-width: 100%; background: #fff; border-radius: 22px; overflow: hidden;
++  box-shadow: 0 18px 48px rgba(16, 24, 40, .18); display: flex; flex-direction: column; }
++.snap-note { position: fixed; left: 12px; bottom: 12px; font: 12px/1.5 ui-monospace, Consolas, monospace;
++  color: #64748b; background: rgba(255,255,255,.9); padding: 6px 10px; border-radius: 8px; }
++</style>
++</head>
++<body>
++<div class="snap-stage">
++  <div class="snap-frame">
++    <header class="sm-appbar"><div class="sm-appbar__inner">
++    
++    <div style="min-width:0">
++         <div class="sm-appbar__title">活动列表</div>
++         <div class="sm-appbar__sub">共 6 条</div>
++       </div>
++    <span class="sm-spacer"></span>
++    <button class="sm-btn sm-btn--sm" type="button" data-action="go-new">＋ 发起</button>
++  </div></header>
++    <main class="sm-main sm-stack">
++      <section>
++        <div class="sm-filters" role="group" data-chips="sport"><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value=""
++           aria-pressed="true">全部项目</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="篮球"
++           aria-pressed="false">🏀 篮球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="足球"
++           aria-pressed="false">⚽ 足球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="羽毛球"
++           aria-pressed="false">🏸 羽毛球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="乒乓球"
++           aria-pressed="false">🏓 乒乓球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="网球"
++           aria-pressed="false">🎾 网球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="排球"
++           aria-pressed="false">🏐 排球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="跑步"
++           aria-pressed="false">🏃 跑步</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="游泳"
++           aria-pressed="false">🏊 游泳</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="健身"
++           aria-pressed="false">🏋️ 健身</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="骑行"
++           aria-pressed="false">🚴 骑行</button></div>
++        <div class="sm-filters" role="group" data-chips="status"><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value=""
++           aria-pressed="false">不限状态</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value="open"
++           aria-pressed="true">可报名</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value="full"
++           aria-pressed="false">已满员</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value="ongoing"
++           aria-pressed="false">进行中</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value="finished"
++           aria-pressed="false">已结束</button></div>
++        <div class="sm-filters" role="group" data-chips="date"><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="date" data-value=""
++           aria-pressed="true">不限时间</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="date" data-value="today"
++           aria-pressed="false">今天</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="date" data-value="tomorrow"
++           aria-pressed="false">明天</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="date" data-value="week"
++           aria-pressed="false">近 7 天</button></div>
++        <div class="sm-filters" role="group" data-chips="campus"><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value=""
++           aria-pressed="true">全部校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="旗山校区"
++           aria-pressed="false">旗山校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="铜盘校区"
++           aria-pressed="false">铜盘校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="怡山校区"
++           aria-pressed="false">怡山校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="晋江校区"
++           aria-pressed="false">晋江校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="厦门工艺美院"
++           aria-pressed="false">厦门工艺美院</button></div>
++        <div class="sm-filters" role="group" data-chips="skill_level"><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="skill_level" data-value=""
++           aria-pressed="true">不限水平</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="skill_level" data-value="beginner"
++           aria-pressed="false">新手</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="skill_level" data-value="intermediate"
++           aria-pressed="false">一般</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="skill_level" data-value="advanced"
++           aria-pressed="false">熟练</button></div>
++
++        <div class="sm-row sm-row--between" style="margin-top:8px">
++          <label class="sm-check">
++            <input type="checkbox" name="only_available" checked
++              data-action="toggle-available" />
++            只看还有空位
++          </label>
++          
++        </div>
++      </section>
++
++      
++
++      <section class="sm-stack">
++                 <article class="sm-act" data-action="open-activity" data-id="101" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🏀</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">周三晚篮球 3v3，缺两人</div>
++        <div class="sm-act__meta">
++          <span>11-25 周三 04:09</span>
++          <span>·</span>
++          <span>旗山校区 风雨操场 3 号场</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >篮球</span>
++      <span class="sm-tag " >不限水平</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ok" >免费</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:50%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>3/6</b></span>
++      <span>还差 <b>3</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">王</span>
++        <b>王妍</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="101">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="102" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🏃</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">晨跑 5 公里 · 旗山环校</div>
++        <div class="sm-act__meta">
++          <span>11-25 周三 23:09</span>
++          <span>·</span>
++          <span>旗山校区 田径场东门</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >跑步</span>
++      <span class="sm-tag sm-tag--ok" >新手</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ok" >免费</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:38%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>3/8</b></span>
++      <span>还差 <b>5</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">赵</span>
++        <b>赵琳</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="102">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="104" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">⚽</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">足球 5v5，还差 3 人</div>
++        <div class="sm-act__meta">
++          <span>11-27 周五 22:09</span>
++          <span>·</span>
++          <span>旗山校区 人工草皮足球场</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >足球</span>
++      <span class="sm-tag " >不限水平</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ghost" >¥5/人</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:30%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>3/10</b></span>
++      <span>还差 <b>7</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">孙</span>
++        <b>孙琦</b>
++        <span>信用 74</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="104">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="105" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🏓</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">乒乓球约练，晚上七点后</div>
++        <div class="sm-act__meta">
++          <span>11-29 周日 00:09</span>
++          <span>·</span>
++          <span>铜盘校区 体育馆乒乓球室</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >乒乓球</span>
++      <span class="sm-tag sm-tag--ok" >新手</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ok" >免费</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:25%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>1/4</b></span>
++      <span>还差 <b>3</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">周</span>
++        <b>周雨</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="105">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="106" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🏊</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">游泳自由练习（限女生）</div>
++        <div class="sm-act__meta">
++          <span>11-30 周一 03:09</span>
++          <span>·</span>
++          <span>旗山校区 校游泳馆</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >游泳</span>
++      <span class="sm-tag " >不限水平</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ghost" >¥20/人</span>
++      <span class="sm-tag sm-tag--warn" >限女生</span>
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:33%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>2/6</b></span>
++      <span>还差 <b>4</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">王</span>
++        <b>王妍</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="106">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="108" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🚴</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">周末骑行 · 旗山到鼓山</div>
++        <div class="sm-act__meta">
++          <span>12-1 周二 02:09</span>
++          <span>·</span>
++          <span>旗山校区 校门口广场</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >骑行</span>
++      <span class="sm-tag sm-tag--brand" >熟练</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ok" >免费</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:25%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>2/8</b></span>
++      <span>还差 <b>6</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">赵</span>
++        <b>赵琳</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="108">报名</button>
++      </span>
++    </div>
++  </article>
++                 <div style="text-align:center;padding:6px 0">
++                   <span class="sm-card__hint">已经到底了 · 共 6 条</span>
++                 </div>
++               </section>
++
++      <nav class="sm-tabbar" aria-label="主导航"><div class="sm-tabbar__inner">
++    <button class="sm-tab" type="button" data-action="nav" data-href="#/discover"
++        >
++        <span class="sm-tab__icon" aria-hidden="true">🔍</span>
++        <span>找局</span>
++      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/activities"
++        aria-current="page">
++        <span class="sm-tab__icon" aria-hidden="true">📋</span>
++        <span>活动</span>
++      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/manage"
++        >
++        <span class="sm-tab__icon" aria-hidden="true">🎯</span>
++        <span>我的局</span>
++      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/me"
++        >
++        <span class="sm-tab__icon" aria-hidden="true">👤</span>
++        <span>我的</span>
++      </button>
++  </div></nav>
++    </main>
++  </div>
++</div>
++<div class="snap-note">Issue #7 · 活动列表 · 390×844 · 数据来自内置示意数据（mock）</div>
++</body>
++</html>
+--- /dev/null
++++ b/docs/shots/issue7-list-320.html
+@@ -0,0 +1,1623 @@
++<!doctype html>
++<html lang="zh-CN">
++<head>
++<meta charset="utf-8" />
++<meta name="viewport" content="width=device-width, initial-scale=1" />
++<title>Issue #7 活动列表 · 320px 静态快照</title>
++<style>
++/* ==========================================================================
++   动搭 SportMate · 设计系统
++   --------------------------------------------------------------------------
++   这一份 CSS 同时服务两个交付物：
++     1) frontend/   真实可用前端（连后端或离线 mock）
++     2) prototype/  界面原型（复用同一套样式，保证原型与实现一致）
++   因此这里只放"与数据无关"的视觉规则，不放任何业务逻辑。
++   ========================================================================== */
++
++/* ---------- 1. 设计令牌 ---------- */
++:root {
++  /* 主色：活力橙（运动感），辅助色：青绿（信用分/成功） */
++  --brand: #ff6a3d;
++  --brand-600: #f2542d;
++  --brand-100: #fff1eb;
++  --accent: #12b5a5;
++  --accent-100: #e6f8f6;
++
++  /* 中性色阶 */
++  --ink: #16181d;
++  --ink-2: #4a5060;
++  --ink-3: #7b8398;
++  --line: #edeff4;
++  --line-2: #e0e4ec;
++  --surface: #ffffff;
++  --surface-2: #f6f7fb;
++  --bg: #f2f4f9;
++
++  /* 语义色 */
++  --ok: #10a37f;
++  --ok-bg: #e8f8f2;
++  --warn: #c07800;
++  --warn-bg: #fff6e0;
++  --danger: #d92d4b;
++  --danger-bg: #fdecef;
++  --info: #2f6fd0;
++  --info-bg: #eaf2fe;
++
++  /* 形状与阴影 */
++  --r-sm: 8px;
++  --r: 12px;
++  --r-lg: 18px;
++  --r-pill: 999px;
++  --sh-1: 0 1px 2px rgba(22, 24, 29, 0.05);
++  --sh-2: 0 4px 14px rgba(22, 24, 29, 0.07);
++  --sh-3: 0 12px 34px rgba(22, 24, 29, 0.12);
++
++  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
++    "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
++  --font-num: "SF Mono", "JetBrains Mono", ui-monospace, Consolas, monospace;
++}
++
++/* ---------- 2. 归零 ---------- */
++*,
++*::before,
++*::after {
++  box-sizing: border-box;
++}
++html,
++body {
++  margin: 0;
++  padding: 0;
++}
++body {
++  font-family: var(--font);
++  color: var(--ink);
++  background: var(--bg);
++  font-size: 15px;
++  line-height: 1.55;
++  -webkit-font-smoothing: antialiased;
++  text-rendering: optimizeLegibility;
++}
++h1,
++h2,
++h3,
++h4,
++p,
++ul,
++ol,
++figure {
++  margin: 0;
++}
++ul,
++ol {
++  padding: 0;
++  list-style: none;
++}
++button,
++input,
++select,
++textarea {
++  font: inherit;
++  color: inherit;
++}
++a {
++  color: var(--brand-600);
++  text-decoration: none;
++}
++a:hover {
++  text-decoration: underline;
++}
++img,
++svg {
++  display: block;
++  max-width: 100%;
++}
++
++/* ---------- 3. 布局骨架 ---------- */
++.sm-shell {
++  min-height: 100vh;
++  display: flex;
++  flex-direction: column;
++  background: var(--bg);
++}
++.sm-main {
++  flex: 1;
++  width: 100%;
++  max-width: 520px;
++  margin: 0 auto;
++  padding: 16px 16px 96px;
++}
++.sm-main--wide {
++  max-width: 900px;
++}
++.sm-stack > * + * {
++  margin-top: 14px;
++}
++.sm-row {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++.sm-row--wrap {
++  flex-wrap: wrap;
++}
++.sm-row--between {
++  justify-content: space-between;
++}
++.sm-spacer {
++  flex: 1;
++}
++.sm-hide {
++  display: none !important;
++}
++
++/* ---------- 4. 顶部栏 ---------- */
++.sm-appbar {
++  position: sticky;
++  top: 0;
++  z-index: 20;
++  background: rgba(255, 255, 255, 0.86);
++  backdrop-filter: saturate(180%) blur(12px);
++  border-bottom: 1px solid var(--line);
++}
++.sm-appbar__inner {
++  max-width: 520px;
++  margin: 0 auto;
++  padding: 12px 16px;
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++.sm-appbar__title {
++  font-size: 17px;
++  font-weight: 650;
++  letter-spacing: -0.01em;
++}
++.sm-appbar__sub {
++  font-size: 12px;
++  color: var(--ink-3);
++}
++.sm-brand {
++  display: flex;
++  align-items: center;
++  gap: 9px;
++}
++.sm-brand__mark {
++  width: 30px;
++  height: 30px;
++  border-radius: 9px;
++  background: linear-gradient(135deg, var(--brand) 0%, #ff9166 100%);
++  color: #fff;
++  display: grid;
++  place-items: center;
++  font-size: 16px;
++  box-shadow: 0 3px 10px rgba(255, 106, 61, 0.32);
++}
++.sm-brand__name {
++  font-size: 16px;
++  font-weight: 700;
++  letter-spacing: -0.02em;
++}
++.sm-backbtn {
++  width: 34px;
++  height: 34px;
++  border-radius: 10px;
++  border: 1px solid var(--line-2);
++  background: #fff;
++  cursor: pointer;
++  display: grid;
++  place-items: center;
++  font-size: 16px;
++  color: var(--ink-2);
++  flex: none;
++}
++.sm-backbtn:hover {
++  background: var(--surface-2);
++}
++
++/* ---------- 5. 卡片 ---------- */
++.sm-card {
++  background: var(--surface);
++  border: 1px solid var(--line);
++  border-radius: var(--r-lg);
++  box-shadow: var(--sh-1);
++  padding: 16px;
++}
++.sm-card--flat {
++  box-shadow: none;
++}
++.sm-card--brand {
++  background: linear-gradient(140deg, #fff 0%, var(--brand-100) 100%);
++  border-color: #ffd9c9;
++}
++.sm-card__title {
++  font-size: 15px;
++  font-weight: 650;
++  margin-bottom: 10px;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++}
++.sm-card__hint {
++  font-size: 12.5px;
++  color: var(--ink-3);
++  line-height: 1.6;
++}
++.sm-divider {
++  height: 1px;
++  background: var(--line);
++  margin: 12px 0;
++  border: 0;
++}
++
++/* ---------- 6. 按钮 ---------- */
++.sm-btn {
++  --btn-bg: #fff;
++  --btn-fg: var(--ink);
++  --btn-bd: var(--line-2);
++  display: inline-flex;
++  align-items: center;
++  justify-content: center;
++  gap: 6px;
++  padding: 10px 16px;
++  min-height: 42px;
++  border-radius: var(--r);
++  border: 1px solid var(--btn-bd);
++  background: var(--btn-bg);
++  color: var(--btn-fg);
++  font-size: 14.5px;
++  font-weight: 600;
++  cursor: pointer;
++  transition: transform 0.06s ease, filter 0.15s ease, background 0.15s ease;
++  white-space: nowrap;
++  user-select: none;
++}
++.sm-btn:hover:not(:disabled) {
++  filter: brightness(0.97);
++}
++.sm-btn:active:not(:disabled) {
++  transform: translateY(1px);
++}
++.sm-btn:disabled {
++  opacity: 0.45;
++  cursor: not-allowed;
++}
++.sm-btn--primary {
++  --btn-bg: var(--brand);
++  --btn-fg: #fff;
++  --btn-bd: var(--brand);
++  box-shadow: 0 4px 12px rgba(255, 106, 61, 0.28);
++}
++.sm-btn--accent {
++  --btn-bg: var(--accent);
++  --btn-fg: #fff;
++  --btn-bd: var(--accent);
++}
++.sm-btn--ghost {
++  --btn-bg: var(--surface-2);
++  --btn-bd: transparent;
++  color: var(--ink-2);
++}
++.sm-btn--danger {
++  --btn-fg: var(--danger);
++  --btn-bd: #f6c9d2;
++  --btn-bg: #fff;
++}
++.sm-btn--block {
++  width: 100%;
++}
++.sm-btn--sm {
++  min-height: 34px;
++  padding: 6px 12px;
++  font-size: 13px;
++  border-radius: 10px;
++}
++.sm-btn--lg {
++  min-height: 50px;
++  font-size: 16px;
++  border-radius: 14px;
++}
++
++/* ---------- 7. 表单 ---------- */
++.sm-field {
++  display: block;
++}
++.sm-field + .sm-field {
++  margin-top: 12px;
++}
++.sm-label {
++  display: block;
++  font-size: 12.5px;
++  font-weight: 600;
++  color: var(--ink-2);
++  margin-bottom: 6px;
++}
++.sm-label__opt {
++  font-weight: 500;
++  color: var(--ink-3);
++}
++.sm-input,
++.sm-select,
++.sm-textarea {
++  width: 100%;
++  padding: 11px 13px;
++  border: 1px solid var(--line-2);
++  border-radius: var(--r);
++  background: #fff;
++  outline: none;
++  transition: border-color 0.15s ease, box-shadow 0.15s ease;
++}
++.sm-textarea {
++  min-height: 76px;
++  resize: vertical;
++}
++.sm-input:focus,
++.sm-select:focus,
++.sm-textarea:focus {
++  border-color: var(--brand);
++  box-shadow: 0 0 0 3px rgba(255, 106, 61, 0.14);
++}
++.sm-input::placeholder,
++.sm-textarea::placeholder {
++  color: #a9b0c0;
++}
++.sm-input[type="number"] {
++  font-family: var(--font-num);
++}
++.sm-grid2 {
++  display: grid;
++  grid-template-columns: 1fr 1fr;
++  gap: 12px;
++}
++@media (max-width: 420px) {
++  .sm-grid2 {
++    grid-template-columns: 1fr;
++  }
++}
++.sm-check {
++  display: inline-flex;
++  align-items: center;
++  gap: 8px;
++  font-size: 13.5px;
++  cursor: pointer;
++}
++.sm-check input {
++  width: 16px;
++  height: 16px;
++  accent-color: var(--brand);
++  flex: none;
++}
++.sm-switch {
++  display: inline-flex;
++  background: var(--surface-2);
++  border-radius: var(--r-pill);
++  padding: 3px;
++  gap: 2px;
++}
++.sm-switch button {
++  border: 0;
++  background: transparent;
++  padding: 7px 16px;
++  border-radius: var(--r-pill);
++  font-size: 13.5px;
++  font-weight: 600;
++  color: var(--ink-3);
++  cursor: pointer;
++}
++.sm-switch button[aria-pressed="true"] {
++  background: #fff;
++  color: var(--ink);
++  box-shadow: var(--sh-1);
++}
++
++/* ---------- 8. 标签 / 徽标 ---------- */
++.sm-tag {
++  display: inline-flex;
++  align-items: center;
++  gap: 4px;
++  padding: 2px 8px;
++  border-radius: 6px;
++  background: var(--surface-2);
++  color: var(--ink-2);
++  font-size: 11.5px;
++  font-weight: 600;
++  line-height: 1.7;
++  white-space: nowrap;
++}
++.sm-tag--brand {
++  background: var(--brand-100);
++  color: var(--brand-600);
++}
++.sm-tag--ok {
++  background: var(--ok-bg);
++  color: var(--ok);
++}
++.sm-tag--warn {
++  background: var(--warn-bg);
++  color: var(--warn);
++}
++.sm-tag--danger {
++  background: var(--danger-bg);
++  color: var(--danger);
++}
++.sm-tag--info {
++  background: var(--info-bg);
++  color: var(--info);
++}
++.sm-tag--ghost {
++  background: transparent;
++  border: 1px solid var(--line-2);
++  color: var(--ink-3);
++}
++.sm-dot {
++  width: 6px;
++  height: 6px;
++  border-radius: 50%;
++  background: currentColor;
++  flex: none;
++}
++
++/* ---------- 9. 活动卡片 ---------- */
++.sm-act {
++  position: relative;
++  display: block;
++  width: 100%;
++  text-align: left;
++  background: var(--surface);
++  border: 1px solid var(--line);
++  border-radius: var(--r-lg);
++  padding: 14px;
++  box-shadow: var(--sh-1);
++  cursor: pointer;
++  transition: box-shadow 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
++}
++.sm-act:hover {
++  box-shadow: var(--sh-2);
++  border-color: #ffd9c9;
++}
++.sm-act:active {
++  transform: scale(0.995);
++}
++.sm-act__head {
++  display: flex;
++  gap: 10px;
++  align-items: flex-start;
++}
++.sm-act__sport {
++  width: 42px;
++  height: 42px;
++  border-radius: 12px;
++  background: var(--brand-100);
++  display: grid;
++  place-items: center;
++  font-size: 21px;
++  flex: none;
++}
++.sm-act__title {
++  font-size: 15.5px;
++  font-weight: 660;
++  letter-spacing: -0.01em;
++  line-height: 1.35;
++  display: -webkit-box;
++  -webkit-line-clamp: 2;
++  -webkit-box-orient: vertical;
++  overflow: hidden;
++  overflow-wrap: anywhere;
++}
++.sm-act__meta {
++  font-size: 12.5px;
++  color: var(--ink-3);
++  margin-top: 3px;
++  display: flex;
++  flex-wrap: wrap;
++  align-items: center;
++  gap: 4px 8px;
++}
++.sm-act__meta b {
++  color: var(--ink-2);
++  font-weight: 600;
++}
++.sm-act__tags {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++  margin-top: 10px;
++}
++.sm-act__foot {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 10px;
++  margin-top: 12px;
++  padding-top: 11px;
++  border-top: 1px dashed var(--line-2);
++}
++.sm-act__org {
++  font-size: 12px;
++  color: var(--ink-3);
++  display: flex;
++  align-items: center;
++  gap: 6px;
++  min-width: 0;
++}
++.sm-act__org b {
++  color: var(--ink-2);
++  font-weight: 600;
++  overflow: hidden;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++.sm-avatar {
++  width: 22px;
++  height: 22px;
++  border-radius: 50%;
++  background: var(--surface-2);
++  border: 1px solid var(--line-2);
++  display: grid;
++  place-items: center;
++  font-size: 11px;
++  font-weight: 700;
++  color: var(--ink-3);
++  flex: none;
++}
++.sm-avatar--lg {
++  width: 46px;
++  height: 46px;
++  font-size: 18px;
++}
++
++/* 座位进度条 */
++.sm-seats {
++  margin-top: 11px;
++}
++.sm-seats__bar {
++  height: 6px;
++  border-radius: 99px;
++  background: var(--surface-2);
++  overflow: hidden;
++}
++.sm-seats__fill {
++  height: 100%;
++  border-radius: 99px;
++  background: linear-gradient(90deg, var(--accent) 0%, #4fd6c6 100%);
++}
++.sm-seats__fill--full {
++  background: linear-gradient(90deg, #f0a500 0%, #ffc94d 100%);
++}
++.sm-seats__txt {
++  display: flex;
++  justify-content: space-between;
++  font-size: 11.5px;
++  color: var(--ink-3);
++  margin-top: 5px;
++}
++.sm-seats__txt b {
++  color: var(--ink-2);
++  font-family: var(--font-num);
++}
++
++/* ---------- 10. 匹配理由 ---------- */
++.sm-reason {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++  margin-top: 10px;
++}
++.sm-score {
++  margin-left: auto;
++  font-size: 11.5px;
++  font-weight: 700;
++  color: var(--brand-600);
++  background: var(--brand-100);
++  padding: 2px 9px;
++  border-radius: var(--r-pill);
++  font-family: var(--font-num);
++}
++
++/* ---------- 11. 一句话找局 ---------- */
++.sm-nlp {
++  background: linear-gradient(140deg, #2b2f3a 0%, #454b5c 100%);
++  border-radius: var(--r-lg);
++  padding: 16px;
++  color: #fff;
++  box-shadow: var(--sh-2);
++}
++.sm-nlp__label {
++  font-size: 12.5px;
++  color: rgba(255, 255, 255, 0.66);
++  margin-bottom: 8px;
++  display: flex;
++  align-items: center;
++  gap: 6px;
++}
++.sm-nlp__row {
++  display: flex;
++  gap: 8px;
++}
++.sm-nlp__input {
++  flex: 1;
++  border: 0;
++  border-radius: var(--r);
++  padding: 12px 13px;
++  background: rgba(255, 255, 255, 0.12);
++  color: #fff;
++  outline: none;
++  min-width: 0;
++}
++.sm-nlp__input::placeholder {
++  color: rgba(255, 255, 255, 0.5);
++}
++.sm-nlp .sm-btn--primary {
++  box-shadow: none;
++}
++.sm-nlp__chips {
++  display: flex;
++  flex-wrap: wrap;
++  gap: 6px;
++  margin-top: 10px;
++}
++.sm-nlp__chip {
++  border: 1px solid rgba(255, 255, 255, 0.22);
++  background: rgba(255, 255, 255, 0.06);
++  color: rgba(255, 255, 255, 0.88);
++  border-radius: var(--r-pill);
++  padding: 4px 11px;
++  font-size: 12px;
++  cursor: pointer;
++}
++.sm-nlp__chip:hover {
++  background: rgba(255, 255, 255, 0.14);
++}
++
++/* ---------- 12. 筛选条 ---------- */
++.sm-filters {
++  display: flex;
++  gap: 8px;
++  overflow-x: auto;
++  padding: 2px 0 4px;
++  margin: 0 -16px;
++  padding-left: 16px;
++  padding-right: 16px;
++  scrollbar-width: none;
++}
++.sm-filters::-webkit-scrollbar {
++  display: none;
++}
++.sm-chip {
++  border: 1px solid var(--line-2);
++  background: #fff;
++  border-radius: var(--r-pill);
++  padding: 7px 14px;
++  font-size: 13px;
++  font-weight: 600;
++  color: var(--ink-2);
++  cursor: pointer;
++  white-space: nowrap;
++  flex: none;
++}
++.sm-chip[aria-pressed="true"] {
++  background: var(--ink);
++  border-color: var(--ink);
++  color: #fff;
++}
++.sm-chip--mini {
++  padding: 5px 11px;
++  font-size: 12.5px;
++}
++
++/* ---------- 13. 信用分 ---------- */
++.sm-credit {
++  display: flex;
++  align-items: center;
++  gap: 16px;
++}
++.sm-credit__ring {
++  flex: none;
++  width: 78px;
++  height: 78px;
++  border-radius: 50%;
++  display: grid;
++  place-items: center;
++  position: relative;
++}
++.sm-credit__num {
++  font-family: var(--font-num);
++  font-size: 25px;
++  font-weight: 700;
++  line-height: 1;
++}
++.sm-credit__unit {
++  font-size: 10.5px;
++  color: var(--ink-3);
++  display: block;
++  text-align: center;
++  margin-top: 3px;
++}
++.sm-credit__stats {
++  display: grid;
++  grid-template-columns: repeat(3, 1fr);
++  gap: 8px;
++  flex: 1;
++}
++.sm-stat {
++  text-align: center;
++  background: var(--surface-2);
++  border-radius: var(--r);
++  padding: 8px 4px;
++}
++.sm-stat__num {
++  font-family: var(--font-num);
++  font-size: 16px;
++  font-weight: 700;
++}
++.sm-stat__label {
++  font-size: 11px;
++  color: var(--ink-3);
++  margin-top: 1px;
++}
++
++/* ---------- 14. 时间线 / 列表行 ---------- */
++.sm-list {
++  border-radius: var(--r-lg);
++  background: var(--surface);
++  border: 1px solid var(--line);
++  overflow: hidden;
++}
++.sm-list__item {
++  display: flex;
++  align-items: center;
++  gap: 12px;
++  padding: 13px 15px;
++  cursor: pointer;
++  background: none;
++  border: 0;
++  width: 100%;
++  text-align: left;
++}
++.sm-list__item + .sm-list__item {
++  border-top: 1px solid var(--line);
++}
++.sm-list__item:hover {
++  background: var(--surface-2);
++}
++.sm-list__icon {
++  width: 34px;
++  height: 34px;
++  border-radius: 10px;
++  background: var(--surface-2);
++  display: grid;
++  place-items: center;
++  font-size: 17px;
++  flex: none;
++}
++.sm-list__body {
++  flex: 1;
++  min-width: 0;
++}
++.sm-list__title {
++  font-size: 14.5px;
++  font-weight: 600;
++}
++.sm-list__desc {
++  font-size: 12px;
++  color: var(--ink-3);
++  margin-top: 1px;
++}
++.sm-list__chev {
++  color: #c2c8d6;
++  font-size: 17px;
++  flex: none;
++}
++
++/* ---------- 15. 详情页 ---------- */
++.sm-hero {
++  background: var(--surface);
++  border-bottom: 1px solid var(--line);
++  padding: 18px 16px 20px;
++}
++.sm-hero__inner {
++  max-width: 520px;
++  margin: 0 auto;
++}
++.sm-hero__title {
++  font-size: 21px;
++  font-weight: 700;
++  letter-spacing: -0.02em;
++  line-height: 1.3;
++}
++.sm-facts {
++  display: grid;
++  gap: 10px;
++}
++.sm-fact {
++  display: flex;
++  gap: 10px;
++  align-items: flex-start;
++  font-size: 13.5px;
++}
++.sm-fact__k {
++  width: 68px;
++  flex: none;
++  color: var(--ink-3);
++}
++.sm-fact__v {
++  flex: 1;
++  color: var(--ink);
++  font-weight: 500;
++}
++.sm-code {
++  display: flex;
++  gap: 8px;
++  margin: 6px 0 2px;
++}
++.sm-code__cell {
++  flex: 1;
++  background: var(--ink);
++  color: #fff;
++  border-radius: var(--r);
++  font-family: var(--font-num);
++  font-size: 26px;
++  font-weight: 700;
++  text-align: center;
++  padding: 10px 0;
++  letter-spacing: 2px;
++}
++.sm-member {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  padding: 10px 0;
++}
++.sm-member + .sm-member {
++  border-top: 1px solid var(--line);
++}
++.sm-member__body {
++  flex: 1;
++  min-width: 0;
++}
++.sm-member__name {
++  font-size: 14px;
++  font-weight: 620;
++}
++.sm-member__sub {
++  font-size: 11.5px;
++  color: var(--ink-3);
++}
++
++/* ---------- 16. 反馈条 ---------- */
++.sm-alert {
++  display: flex;
++  gap: 9px;
++  align-items: flex-start;
++  padding: 11px 13px;
++  border-radius: var(--r);
++  font-size: 13px;
++  line-height: 1.5;
++}
++.sm-alert--error {
++  background: var(--danger-bg);
++  color: #8f1730;
++}
++.sm-alert--ok {
++  background: var(--ok-bg);
++  color: #0a6b52;
++}
++.sm-alert--info {
++  background: var(--info-bg);
++  color: #1c4e97;
++}
++.sm-alert--warn {
++  background: var(--warn-bg);
++  color: #8a5800;
++}
++.sm-alert__icon {
++  flex: none;
++  font-size: 14px;
++  line-height: 1.4;
++}
++
++/* ---------- 17. 空态 / 加载 ---------- */
++.sm-empty {
++  text-align: center;
++  padding: 40px 20px;
++  color: var(--ink-3);
++}
++.sm-empty__icon {
++  font-size: 34px;
++  margin-bottom: 8px;
++  opacity: 0.75;
++}
++.sm-empty__title {
++  font-size: 14.5px;
++  font-weight: 600;
++  color: var(--ink-2);
++}
++.sm-empty__desc {
++  font-size: 12.5px;
++  margin-top: 4px;
++}
++.sm-skel {
++  border-radius: var(--r);
++  background: linear-gradient(90deg, #eef0f5 25%, #f6f7fa 37%, #eef0f5 63%);
++  background-size: 400% 100%;
++  animation: sm-shimmer 1.3s ease infinite;
++}
++@keyframes sm-shimmer {
++  0% {
++    background-position: 100% 50%;
++  }
++  100% {
++    background-position: 0 50%;
++  }
++}
++
++/* ---------- 18. 底部标签栏 ---------- */
++.sm-tabbar {
++  position: fixed;
++  left: 0;
++  right: 0;
++  bottom: 0;
++  z-index: 30;
++  background: rgba(255, 255, 255, 0.92);
++  backdrop-filter: saturate(180%) blur(14px);
++  border-top: 1px solid var(--line);
++  padding-bottom: env(safe-area-inset-bottom);
++}
++.sm-tabbar__inner {
++  max-width: 520px;
++  margin: 0 auto;
++  display: grid;
++  grid-template-columns: repeat(4, 1fr);
++}
++.sm-tab {
++  border: 0;
++  background: none;
++  padding: 8px 0 9px;
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  gap: 2px;
++  color: var(--ink-3);
++  font-size: 10.5px;
++  font-weight: 600;
++  cursor: pointer;
++}
++.sm-tab__icon {
++  font-size: 19px;
++  line-height: 1.1;
++  filter: grayscale(1);
++  opacity: 0.62;
++}
++.sm-tab[aria-current="page"] {
++  color: var(--brand-600);
++}
++.sm-tab[aria-current="page"] .sm-tab__icon {
++  filter: none;
++  opacity: 1;
++}
++.sm-fab {
++  position: fixed;
++  right: max(16px, calc(50% - 260px + 16px));
++  bottom: 78px;
++  z-index: 31;
++  width: 54px;
++  height: 54px;
++  border-radius: 18px;
++  border: 0;
++  background: var(--brand);
++  color: #fff;
++  font-size: 25px;
++  cursor: pointer;
++  box-shadow: 0 8px 22px rgba(255, 106, 61, 0.42);
++  display: grid;
++  place-items: center;
++  line-height: 1;
++}
++.sm-fab:active {
++  transform: translateY(1px);
++}
++
++/* ---------- 19. 认证页 ---------- */
++.sm-auth {
++  min-height: 100vh;
++  display: grid;
++  place-items: center;
++  padding: 24px 16px;
++  background: radial-gradient(120% 80% at 50% 0%, #fff3ee 0%, var(--bg) 58%);
++}
++.sm-auth__card {
++  width: 100%;
++  max-width: 392px;
++}
++.sm-auth__logo {
++  width: 60px;
++  height: 60px;
++  border-radius: 19px;
++  background: linear-gradient(135deg, var(--brand) 0%, #ff9166 100%);
++  color: #fff;
++  display: grid;
++  place-items: center;
++  font-size: 30px;
++  margin: 0 auto 14px;
++  box-shadow: 0 10px 26px rgba(255, 106, 61, 0.36);
++}
++.sm-auth__title {
++  text-align: center;
++  font-size: 23px;
++  font-weight: 720;
++  letter-spacing: -0.02em;
++}
++.sm-auth__sub {
++  text-align: center;
++  font-size: 13px;
++  color: var(--ink-3);
++  margin: 5px 0 20px;
++}
++.sm-auth__foot {
++  text-align: center;
++  font-size: 12px;
++  color: var(--ink-3);
++  margin-top: 16px;
++  line-height: 1.7;
++}
++
++/* ---------- 20. 弹层 ---------- */
++.sm-sheet {
++  position: fixed;
++  inset: 0;
++  z-index: 60;
++  display: flex;
++  align-items: flex-end;
++  justify-content: center;
++  background: rgba(18, 20, 26, 0.44);
++  padding: 0;
++}
++.sm-sheet__panel {
++  background: #fff;
++  width: 100%;
++  max-width: 520px;
++  border-radius: 20px 20px 0 0;
++  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
++  max-height: 88vh;
++  overflow-y: auto;
++  box-shadow: var(--sh-3);
++}
++.sm-sheet__head {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 12px;
++  margin-bottom: 12px;
++}
++.sm-sheet__title {
++  font-size: 16.5px;
++  font-weight: 680;
++}
++@media (min-width: 560px) {
++  .sm-sheet {
++    align-items: center;
++  }
++  .sm-sheet__panel {
++    border-radius: 20px;
++    max-width: 460px;
++  }
++}
++
++/* ---------- 21. 星评 ---------- */
++.sm-stars {
++  display: flex;
++  gap: 6px;
++}
++.sm-star {
++  border: 0;
++  background: none;
++  font-size: 26px;
++  line-height: 1;
++  cursor: pointer;
++  color: #d9dde7;
++  padding: 0;
++}
++.sm-star[aria-checked="true"] {
++  color: #ffb020;
++}
++.sm-bars {
++  display: grid;
++  gap: 6px;
++}
++.sm-bar {
++  display: grid;
++  grid-template-columns: 68px 1fr 34px;
++  align-items: center;
++  gap: 8px;
++  font-size: 12px;
++  color: var(--ink-3);
++}
++.sm-bar__track {
++  display: block;
++  height: 6px;
++  border-radius: 99px;
++  background: var(--surface-2);
++  overflow: hidden;
++}
++.sm-bar__fill {
++  display: block;
++  height: 100%;
++  border-radius: 99px;
++  background: #ffb020;
++}
++.sm-bar__num {
++  text-align: right;
++  font-family: var(--font-num);
++  color: var(--ink-2);
++}
++
++/* ---------- 22. 离线提示 ---------- */
++.sm-offline {
++  background: #2b2f3a;
++  color: #fff;
++  font-size: 12px;
++  text-align: center;
++  padding: 6px 12px;
++}
++.sm-offline b {
++  color: #ffd08a;
++}
++
++/* ---------- 23. 桌面端适配 ---------- */
++@media (min-width: 900px) {
++  .sm-main,
++  .sm-appbar__inner,
++  .sm-hero__inner {
++    max-width: 760px;
++  }
++  .sm-act-grid {
++    display: grid;
++    grid-template-columns: 1fr 1fr;
++    gap: 14px;
++  }
++  .sm-act-grid > * + * {
++    margin-top: 0;
++  }
++}
++
++
++/* ---------- 24. 320px 护栏（Issue #7 AC4：窄屏不横向溢出） ---------- */
++/*
++ * 320px 下最容易溢出的三处：顶栏两侧留白 + 「发起」按钮、卡片底部
++ * 「时间 / 名额 / 报名」挤在一行、以及筛选芯片整排铺开。
++ * 这里只收留白、允许换行，不改任何字号与颜色，视觉上与 390px 保持一致。
++ */
++@media (max-width: 360px) {
++  .sm-main {
++    padding-left: 12px;
++    padding-right: 12px;
++  }
++  .sm-appbar__inner {
++    padding-left: 12px;
++    padding-right: 12px;
++    gap: 8px;
++  }
++  .sm-act__foot {
++    flex-wrap: wrap;
++    gap: 8px;
++  }
++  .sm-act__meta {
++    gap: 2px 6px;
++  }
++  .sm-btn--sm {
++    padding-left: 10px;
++    padding-right: 10px;
++  }
++  .sm-chip {
++    padding-left: 11px;
++    padding-right: 11px;
++  }
++  .sm-filters {
++    margin-left: -12px;
++    margin-right: -12px;
++    padding-left: 12px;
++    padding-right: 12px;
++  }
++}
++
++/* 快照专用外壳：把页面放进一个 320px 的手机框里，方便直接截图 */
++.snap-stage { background: #eef1f5; min-height: 100vh; padding: 24px 12px; display: flex; justify-content: center; }
++.snap-frame { width: 320px; max-width: 100%; background: #fff; border-radius: 22px; overflow: hidden;
++  box-shadow: 0 18px 48px rgba(16, 24, 40, .18); display: flex; flex-direction: column; }
++.snap-note { position: fixed; left: 12px; bottom: 12px; font: 12px/1.5 ui-monospace, Consolas, monospace;
++  color: #64748b; background: rgba(255,255,255,.9); padding: 6px 10px; border-radius: 8px; }
++</style>
++</head>
++<body>
++<div class="snap-stage">
++  <div class="snap-frame">
++    <header class="sm-appbar"><div class="sm-appbar__inner">
++    
++    <div style="min-width:0">
++         <div class="sm-appbar__title">活动列表</div>
++         <div class="sm-appbar__sub">共 6 条</div>
++       </div>
++    <span class="sm-spacer"></span>
++    <button class="sm-btn sm-btn--sm" type="button" data-action="go-new">＋ 发起</button>
++  </div></header>
++    <main class="sm-main sm-stack">
++      <section>
++        <div class="sm-filters" role="group" data-chips="sport"><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value=""
++           aria-pressed="true">全部项目</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="篮球"
++           aria-pressed="false">🏀 篮球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="足球"
++           aria-pressed="false">⚽ 足球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="羽毛球"
++           aria-pressed="false">🏸 羽毛球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="乒乓球"
++           aria-pressed="false">🏓 乒乓球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="网球"
++           aria-pressed="false">🎾 网球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="排球"
++           aria-pressed="false">🏐 排球</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="跑步"
++           aria-pressed="false">🏃 跑步</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="游泳"
++           aria-pressed="false">🏊 游泳</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="健身"
++           aria-pressed="false">🏋️ 健身</button><button type="button" class="sm-chip "
++           data-action="filter" data-name="sport" data-value="骑行"
++           aria-pressed="false">🚴 骑行</button></div>
++        <div class="sm-filters" role="group" data-chips="status"><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value=""
++           aria-pressed="false">不限状态</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value="open"
++           aria-pressed="true">可报名</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value="full"
++           aria-pressed="false">已满员</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value="ongoing"
++           aria-pressed="false">进行中</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="status" data-value="finished"
++           aria-pressed="false">已结束</button></div>
++        <div class="sm-filters" role="group" data-chips="date"><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="date" data-value=""
++           aria-pressed="true">不限时间</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="date" data-value="today"
++           aria-pressed="false">今天</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="date" data-value="tomorrow"
++           aria-pressed="false">明天</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="date" data-value="week"
++           aria-pressed="false">近 7 天</button></div>
++        <div class="sm-filters" role="group" data-chips="campus"><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value=""
++           aria-pressed="true">全部校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="旗山校区"
++           aria-pressed="false">旗山校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="铜盘校区"
++           aria-pressed="false">铜盘校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="怡山校区"
++           aria-pressed="false">怡山校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="晋江校区"
++           aria-pressed="false">晋江校区</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="campus" data-value="厦门工艺美院"
++           aria-pressed="false">厦门工艺美院</button></div>
++        <div class="sm-filters" role="group" data-chips="skill_level"><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="skill_level" data-value=""
++           aria-pressed="true">不限水平</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="skill_level" data-value="beginner"
++           aria-pressed="false">新手</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="skill_level" data-value="intermediate"
++           aria-pressed="false">一般</button><button type="button" class="sm-chip sm-chip--mini"
++           data-action="filter" data-name="skill_level" data-value="advanced"
++           aria-pressed="false">熟练</button></div>
++
++        <div class="sm-row sm-row--between" style="margin-top:8px">
++          <label class="sm-check">
++            <input type="checkbox" name="only_available" checked
++              data-action="toggle-available" />
++            只看还有空位
++          </label>
++          
++        </div>
++      </section>
++
++      
++
++      <section class="sm-stack">
++                 <article class="sm-act" data-action="open-activity" data-id="101" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🏀</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">周三晚篮球 3v3，缺两人</div>
++        <div class="sm-act__meta">
++          <span>11-25 周三 04:09</span>
++          <span>·</span>
++          <span>旗山校区 风雨操场 3 号场</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >篮球</span>
++      <span class="sm-tag " >不限水平</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ok" >免费</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:50%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>3/6</b></span>
++      <span>还差 <b>3</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">王</span>
++        <b>王妍</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="101">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="102" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🏃</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">晨跑 5 公里 · 旗山环校</div>
++        <div class="sm-act__meta">
++          <span>11-25 周三 23:09</span>
++          <span>·</span>
++          <span>旗山校区 田径场东门</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >跑步</span>
++      <span class="sm-tag sm-tag--ok" >新手</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ok" >免费</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:38%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>3/8</b></span>
++      <span>还差 <b>5</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">赵</span>
++        <b>赵琳</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="102">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="104" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">⚽</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">足球 5v5，还差 3 人</div>
++        <div class="sm-act__meta">
++          <span>11-27 周五 22:09</span>
++          <span>·</span>
++          <span>旗山校区 人工草皮足球场</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >足球</span>
++      <span class="sm-tag " >不限水平</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ghost" >¥5/人</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:30%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>3/10</b></span>
++      <span>还差 <b>7</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">孙</span>
++        <b>孙琦</b>
++        <span>信用 74</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="104">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="105" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🏓</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">乒乓球约练，晚上七点后</div>
++        <div class="sm-act__meta">
++          <span>11-29 周日 00:09</span>
++          <span>·</span>
++          <span>铜盘校区 体育馆乒乓球室</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >乒乓球</span>
++      <span class="sm-tag sm-tag--ok" >新手</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ok" >免费</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:25%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>1/4</b></span>
++      <span>还差 <b>3</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">周</span>
++        <b>周雨</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="105">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="106" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🏊</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">游泳自由练习（限女生）</div>
++        <div class="sm-act__meta">
++          <span>11-30 周一 03:09</span>
++          <span>·</span>
++          <span>旗山校区 校游泳馆</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >游泳</span>
++      <span class="sm-tag " >不限水平</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ghost" >¥20/人</span>
++      <span class="sm-tag sm-tag--warn" >限女生</span>
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:33%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>2/6</b></span>
++      <span>还差 <b>4</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">王</span>
++        <b>王妍</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="106">报名</button>
++      </span>
++    </div>
++  </article><article class="sm-act" data-action="open-activity" data-id="108" role="button" tabindex="0">
++    <div class="sm-act__head">
++      <span class="sm-act__sport" aria-hidden="true">🚴</span>
++      <div style="flex:1;min-width:0">
++        <div class="sm-act__title">周末骑行 · 旗山到鼓山</div>
++        <div class="sm-act__meta">
++          <span>12-1 周二 02:09</span>
++          <span>·</span>
++          <span>旗山校区 校门口广场</span>
++        </div>
++      </div>
++      
++    </div>
++
++    <div class="sm-act__tags">
++      <span class="sm-tag sm-tag--brand" >骑行</span>
++      <span class="sm-tag sm-tag--brand" >熟练</span>
++      <span class="sm-tag sm-tag--ok" >可报名</span>
++      <span class="sm-tag sm-tag--ok" >免费</span>
++      
++    </div>
++
++    
++
++    <div class="sm-seats">
++    <div class="sm-seats__bar"><div class="sm-seats__fill " style="width:25%"></div></div>
++    <div class="sm-seats__txt">
++      <span>已报名 <b>2/8</b></span>
++      <span>还差 <b>6</b> 人</span>
++    </div>
++  </div>
++
++    <div class="sm-act__foot">
++      <span class="sm-act__org">
++        <span class="sm-avatar" aria-hidden="true">赵</span>
++        <b>赵琳</b>
++        <span>信用 100</span>
++      </span>
++      <span style="display:flex;gap:8px">
++        
++        <button class="sm-btn sm-btn--primary sm-btn--sm" type="button"
++    data-action="join" 
++     data-id="108">报名</button>
++      </span>
++    </div>
++  </article>
++                 <div style="text-align:center;padding:6px 0">
++                   <span class="sm-card__hint">已经到底了 · 共 6 条</span>
++                 </div>
++               </section>
++
++      <nav class="sm-tabbar" aria-label="主导航"><div class="sm-tabbar__inner">
++    <button class="sm-tab" type="button" data-action="nav" data-href="#/discover"
++        >
++        <span class="sm-tab__icon" aria-hidden="true">🔍</span>
++        <span>找局</span>
++      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/activities"
++        aria-current="page">
++        <span class="sm-tab__icon" aria-hidden="true">📋</span>
++        <span>活动</span>
++      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/manage"
++        >
++        <span class="sm-tab__icon" aria-hidden="true">🎯</span>
++        <span>我的局</span>
++      </button><button class="sm-tab" type="button" data-action="nav" data-href="#/me"
++        >
++        <span class="sm-tab__icon" aria-hidden="true">👤</span>
++        <span>我的</span>
++      </button>
++  </div></nav>
++    </main>
++  </div>
++</div>
++<div class="snap-note">Issue #7 · 活动列表 · 320×844 · 数据来自内置示意数据（mock）</div>
++</body>
++</html>
