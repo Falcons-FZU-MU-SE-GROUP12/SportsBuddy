@@ -24,6 +24,7 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-24 | 060725 | 新增 | `src/backend/tests/test_issue15_credit_matrix.py`、`src/backend/tools/race_probe.py`、`docs/alpha-test-report-2026-11-24.md`、`docs/shots/alpha-test-evidence-2026-11-24.png`、`README.md` | 为 Issue #15 补 12 条信用分规则验收用例（全量 54 项通过），新增并发报名探针复现超员缺陷 DEF-01（容量 2 实际入队 7/7/8），产出 Alpha 测试报告与证据图，README 补充测试命令 | 作业五 |
 | 2026-11-22 | 3054664804 | 新增 | `src/backend/tests/test_issue10_persistence_acceptance.py` | 为 Issue #10 增加持久化验收测试 | 作业五 |
 | 2026-11-22 | Lip666-dev | 新增 | `src/backend/tests/test_issue7_activity_list_acceptance.py` | 为 Issue #7 增加活动列表验收测试 | 作业五 |
 | 2026-11-22 | zhangjt123 | 新增 | `src/backend/tests/test_issue6_create_activity_acceptance.py` | 为 Issue #6 增加发起活动验收测试 | 作业五 |

@@ -28,3 +28,17 @@ SportsBuddy/
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Each member uploads their work to the folder
 that matches their role. Put files in the right folder and open a pull request.
+
+## Testing
+
+Backend tests run against an in-memory SQLite database, no setup required.
+
+```bash
+cd src/backend
+py -m pip install -r requirements.txt -r requirements-dev.txt
+py -m pytest -q                 # 54 tests, full business loop
+py -m ruff check .              # code standard check
+py -m tools/race_probe.py       # concurrency probe (exit code 1 = defect reproduced)
+```
+
+Test report: [`docs/alpha-test-report-2026-11-24.md`](docs/alpha-test-report-2026-11-24.md)
