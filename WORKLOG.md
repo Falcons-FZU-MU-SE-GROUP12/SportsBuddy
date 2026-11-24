@@ -24,6 +24,8 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-24 | zhangjt123 | 新增 | `src/backend/tests/test_issue9_join_leave_acceptance.py` | 为 Issue #9 增加报名/取消报名验收测试（报名更新状态与名额、满员 409、信用分低于 60 拦截 403、开始前取消释放名额且可重新报名），5 条用例全部通过 | 作业五 |
+| 2026-11-24 | zhangjt123 | 新增 | `src/backend/tests/test_issue8_activity_detail_acceptance.py` | 为 Issue #8 增加活动详情验收测试（按 id 加载、报名名单与状态可见、满员状态联动、签到码仅发起人可见），4 条用例全部通过 | 作业五 |
 | 2026-11-24 | JorgeHUANG7 | 修复 | `src/backend/tests/test_issue7_activity_list_acceptance.py` | 修复 DEF-02：拆分两处超长 assert 行，使 `ruff check .` 恢复 0 错误（commit af5f8b0） | 作业五 |
 | 2026-11-24 | 060725 | 新增 | `src/backend/tests/test_issue15_credit_matrix.py`、`src/backend/tools/race_probe.py`、`docs/alpha-test-report-2026-11-24.md`、`docs/shots/alpha-test-evidence-2026-11-24.png`、`README.md` | 为 Issue #15 补 12 条信用分规则验收用例（全量 54 项通过），新增并发报名探针复现超员缺陷 DEF-01（容量 2 实际入队 7/7/8），产出 Alpha 测试报告与证据图，README 补充测试命令 | 作业五 |
 | 2026-11-22 | 3054664804 | 新增 | `src/backend/tests/test_issue10_persistence_acceptance.py` | 为 Issue #10 增加持久化验收测试 | 作业五 |
