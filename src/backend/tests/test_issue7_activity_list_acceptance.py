@@ -24,8 +24,10 @@ def test_issue7_only_available_excludes_full_activity(client, register, make_act
     joiner_headers, _ = register("issue7_full_joiner")
     second_headers, _ = register("issue7_full_second")
     activity = make_activity(organizer_headers, capacity=2, title="Issue 7 满员")
-    assert client.post(f"/activities/{activity['id']}/join", headers=joiner_headers).status_code == 201
-    assert client.post(f"/activities/{activity['id']}/join", headers=second_headers).status_code == 201
+    first_join = client.post(f"/activities/{activity['id']}/join", headers=joiner_headers)
+    assert first_join.status_code == 201
+    second_join = client.post(f"/activities/{activity['id']}/join", headers=second_headers)
+    assert second_join.status_code == 201
 
     available = client.get("/activities", params={"only_available": "true"})
     assert available.status_code == 200
