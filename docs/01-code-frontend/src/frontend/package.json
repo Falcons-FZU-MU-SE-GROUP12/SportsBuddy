@@ -1,0 +1,11 @@
+{
+  "name": "sportsbuddy-frontend",
+  "private": true,
+  "type": "module",
+  "description": "Zero-dependency ES-module frontend for Sports Buddy (no npm install, no build step). The \"type\": \"module\" field only tells Node.js that .js files under this directory are ES modules, which is what tools/verify.mjs and tools/server.mjs expect.",
+  "scripts": {
+    "start": "node tools/server.mjs",
+    "verify": "node tools/verify.mjs",
+    "links": "node tools/check-links.mjs"
+  }
+}

@@ -1,0 +1,161 @@
+
+A. 接口清单覆盖（19 个）
+  ✓ POST /auth/login 返回 access_token
+  ✓ POST /auth/register
+  ✓ POST /auth/login
+  ✓ GET /me
+  ✓ PATCH /me
+  ✓ GET /sports
+  ✓ GET /health
+  ✓ GET /users/{id}
+  ✓ GET /users/{id}/reviews
+  ✓ GET /activities
+  ✓ GET /activities/mine
+  ✓ GET /activities/{id}
+  ✓ POST /activities/{id}/join
+  ✓ DELETE /activities/{id}/join
+  ✓ POST /activities/{id}/checkin
+  ✓ POST /activities/{id}/attendance
+  ✓ POST /activities/{id}/reviews
+  ✓ GET /match
+  ✓ GET /match/parse
+  ✓ POST /activities
+  ✓ POST /activities 返回值不含 checkin_code（符合文档"坑 2"）
+  ✓ 创建后再查详情才能拿到 checkin_code
+  ✓ POST /auth/logout
+  ✓ logout 后本地 token 已清除
+
+B. 业务规则（对照《前端对接文档》）
+  ✓ 重复报名返回 409「你已经报名过该活动」 409 · 你已经报名过该活动
+  ✓ 已满员活动 slots_left 为 0
+  ✓ 满员活动报名返回 409「活动已满员」 409 · 你已经报名过该活动
+  ✓ 信用分低于 60 报名返回 403 403 · 你的信用分为 58，低于 60 分，暂时无法报名新活动
+  ✓ 签到码错误返回 403 403 · 签到码错误
+  ✓ 定位超出 300 米返回 403 403 · 你距离活动地点约 1557062 米，超出 300 米签到范围
+  ✓ 定位在范围内签到成功
+  ✓ 距开始不足 2 小时取消 → is_late_cancel = true
+  ✓ 临期取消后信用分被扣 5 分
+  ✓ 考勤返回 attended / no_show / score_changes 三个字段
+  ✓ 未勾选的人被记为爽约
+  ✓ 非发起人拿不到 checkin_code（返回 null）
+  ✓ 进行中的活动报名返回 400 400 · 活动已开始，无法报名
+
+C. 页面渲染与 data-action 契约
+  ✓ 页面 login 标签配平、无异常值、3 个 action 均有处理函数
+  ✓ 页面 discover 标签配平、无异常值、10 个 action 均有处理函数
+  ✓ 页面 activities 标签配平、无异常值、5 个 action 均有处理函数
+  ✓ 页面 activity 标签配平、无异常值、2 个 action 均有处理函数
+  ✓ 页面 activity-new 标签配平、无异常值、4 个 action 均有处理函数
+  ✓ 页面 activity-manage 标签配平、无异常值、1 个 action 均有处理函数
+  ✓ 页面 checkin 标签配平、无异常值、2 个 action 均有处理函数
+  ✓ 页面 review 标签配平、无异常值、3 个 action 均有处理函数
+  ✓ 页面 user 标签配平、无异常值、0 个 action 均有处理函数
+  ✓ 页面 manage 标签配平、无异常值、5 个 action 均有处理函数
+  ✓ 页面 me 标签配平、无异常值、6 个 action 均有处理函数
+
+C-2 未登录时的页面（游客可浏览）
+  ✓ 页面 discover（游客） 标签配平、无异常值、7 个 action 均有处理函数
+  ✓ 页面 activities（游客） 标签配平、无异常值、5 个 action 均有处理函数
+  ✓ 页面 me（游客） 标签配平、无异常值、2 个 action 均有处理函数
+  ✓ 页面 activity（游客） 标签配平、无异常值、2 个 action 均有处理函数
+  ✓ 页面 user（游客） 标签配平、无异常值、0 个 action 均有处理函数
+
+C-3 交互动作执行（本地状态类）
+  ✓ login.mode()
+  ✓ login.mode()
+  ✓ login.pick-sport()
+  ✓ discover.use-example()
+  ✓ discover.filter()
+  ✓ discover.filter()
+  ✓ discover.filter()
+  ✓ discover.clear-matches()
+  ✓ activities.filter()
+  ✓ activities.filter()
+  ✓ activity-new.dur()
+  ✓ activity-new.switch()
+  ✓ activity-new.switch()
+  ✓ activity-manage.check-none()
+  ✓ activity-manage.check-all()
+  ✓ manage.tab()
+  ✓ manage.tab()
+  ✓ me.toggle-edit()
+  ✓ me.pick-sport()
+  ✓ me.switch()
+  ✓ me.toggle-edit()
+  ✓ review.star()
+  ✓ review.tag()
+
+D. 时区与格式化
+  ✓ 不带时区的时间串按 UTC 解析
+  ✓ 格式化后就是本地时间（本机 GMT+8）
+  ✓ 确实避开了 new Date(原始串) 的时区偏差
+  ✓ 已经带 Z 的时间串不会被重复补 Z
+  ✓ 带 +08:00 偏移的时间串解析成同一时刻
+  ✓ 带 +0800（无冒号）偏移也能识别
+  ✓ localInputToUtc 把本地时间转成带 Z 的 UTC
+  ✓ feeText(0) = 免费
+  ✓ feeText(1500) = ¥15/人
+  ✓ feeText(1550) = ¥15.50/人
+  ✓ esc() 转义尖括号
+  ✓ isLateCancelWindow 对 30 分钟后的活动为 true
+  ✓ isLateCancelWindow 对 5 小时后的活动为 false
+  ✓ hasStarted 对过去时间为 true
+
+E. 一句话找局解析
+  ✓ 解析「今晚想在旗山校区打篮球，新手可以吗」
+  ✓ 解析「明早铜盘校区有跑步的吗」
+  ✓ 解析「这周末羽毛球，水平一般」
+  ✓ 解析「想找人打乒乓球」
+  ✓ 匹配结果含 query / count / items
+  ✓ 结果项含 activity / score / reason
+  ✓ reason 含可渲染的推荐理由字段
+  ✓ 匹配结果按分数降序
+  ✓ 已满员活动不出现在匹配结果里
+
+F. Issue #5 个人主页验收（昵称 / 信用分 / 完成与爽约次数）
+  ✓ 他人主页渲染昵称
+  ✓ 他人主页显示信用分
+  ✓ 他人主页显示完成次数
+  ✓ 他人主页显示爽约次数
+  ✓ 他人主页显示评价均分
+  ✓ 「我的」页渲染昵称
+  ✓ 「我的」页显示信用分
+  ✓ 「我的」页显示完成次数与爽约次数
+  ✓ 「我的」页显示评价均分
+  ✓ 评价只有 reviewer_id 时能补出评价人昵称
+  ✓ 补全后的评价人昵称与用户资料一致
+  ✓ 补不到评价人时降级为 null，不抛错
+  ✓ 样式里有 ≤420px 的窄屏适配规则
+
+G. Issue #7 活动列表 + 筛选验收（AC1 列表来自接口 / AC2 组合筛选 / AC3 空态 / AC4 320px）
+  ✓ AC1 列表首屏来自接口且拿满一页
+  ✓ AC1 默认只查「可报名」状态
+  ✓ AC1 默认分页参数 limit=8 / offset=0
+  ✓ AC1 有更多数据时出现「加载更多」
+  ✓ AC1 不再把 only_available 甩给后端（规避 DEF-01 的提前截断）
+  ✓ AC1 第二页 offset=8
+  ✓ AC1 重复出现同一活动时按 id 去重
+  ✓ AC1 12 条全部取完后显示「已经到底了」
+  ✓ AC2 项目筛选生效（6 条篮球里 1 条已满员被隐藏）
+  ✓ AC2 项目参数进查询串
+  ✓ AC2 项目 + 校区两个条件同时生效
+  ✓ AC2 三个条件叠加后结果仍正确（any 水平也算匹配）
+  ✓ AC2 重置后回到默认筛选
+  ✓ AC2 取消「只看还有空位」后满员活动也显示
+  ✓ AC2 未过滤时 12 条都可见
+  ✓ AC2 默认勾选「只看还有空位」时满员活动被隐藏
+  ✓ AC2 隐藏发生在接口返回之后（一页 8 条里剩 5 条，但仍可继续翻页）
+  ✓ AC3 整页满员时给出「继续加载」提示而不是空态
+  ✓ AC3 无结果时显示空态文案
+  ✓ AC3 空态提供「重置筛选」出口
+  ✓ AC2 时间筛选带上 date_from / date_to
+  ✓ AC2 时间参数是 naive UTC（不带 Z），与后端的 naive 存储对齐
+  ✓ AC2 时间窗口正好 24 小时
+  ✓ AC2 时间窗口起点等于本地今天 0 点
+  ✓ AC2 快速切换筛选时，旧响应不覆盖新结果（stale-response 竞态防护）
+  ✓ AC4 存在 ≤360px 的窄屏护栏规则
+  ✓ AC4 卡片标题允许断词，长标题不会撑破容器
+  ✓ AC4 筛选芯片横向滚动而不是撑破页面
+
+────────────────────────────────────────────────────────────────
+全部通过：140 项检查
