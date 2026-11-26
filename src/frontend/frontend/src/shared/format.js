@@ -96,6 +96,23 @@ export function localInputToUtc(localValue) {
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
+/**
+ * 转成后端【可比较】的 naive UTC 串："2026-11-23T16:00:00.000"（没有 Z）。
+ *
+ * 为什么需要它：后端的 start_time 是 naive UTC（存库前 `.replace(tzinfo=None)`），
+ * 而 `GET /activities` 的 date_from / date_to 又直接参与 SQL 比较。SQLite 按字符串
+ * 比大小，带 "+00:00" 的 ISO 串结尾比库里多 6 个字符，同一秒的记录会被判成"更小"，
+ * 于是"今天"筛选会把今天整天的活动全部漏掉。去掉时区后缀后两边格式一致，比较才正确。
+ * 只用于【查询参数】；写库时间仍走 toISOString()，让后端自己转。
+ * @param {Date|string|number} value
+ * @returns {string|null}
+ */
+export function toBackendUtc(value) {
+  const d = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString().replace(/Z$/, '')
+}
+
 /** 判断活动是否已经开始（用于"不能报名/已结束"等界面状态）。 */
 export function hasStarted(startIso, now = Date.now()) {
   const d = parseServerTime(startIso)

@@ -24,6 +24,7 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-24 | Haoze Li (PR #23) | 新增/修改 | `src/frontend/` | 合入 Issue #7：活动列表分页/筛选/竞态防护、naive UTC 时区修复、320px 护栏；verify 140 项通过 | 作业五 |
 | 2026-11-24 | zhangjt123 | 新增 | `src/backend/tests/test_issue9_join_leave_acceptance.py` | 为 Issue #9 增加报名/取消报名验收测试（报名更新状态与名额、满员 409、信用分低于 60 拦截 403、开始前取消释放名额且可重新报名），5 条用例全部通过 | 作业五 |
 | 2026-11-24 | zhangjt123 | 新增 | `src/backend/tests/test_issue8_activity_detail_acceptance.py` | 为 Issue #8 增加活动详情验收测试（按 id 加载、报名名单与状态可见、满员状态联动、签到码仅发起人可见），4 条用例全部通过 | 作业五 |
 | 2026-11-24 | JorgeHUANG7 | 修复 | `src/backend/tests/test_issue7_activity_list_acceptance.py` | 修复 DEF-02：拆分两处超长 assert 行，使 `ruff check .` 恢复 0 错误（commit af5f8b0） | 作业五 |

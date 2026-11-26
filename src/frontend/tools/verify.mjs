@@ -9,7 +9,9 @@
  *   C. 每个页面的 view() 能渲染出结构完整的 HTML：标签配平、无 undefined/NaN、
  *      所有 data-action 都有对应处理函数
  *   D. 时区与格式化：UTC 串按本地时间显示（不出现差 8 小时）
+ *   E. 一句话找局的中英文解析
  *   F. Issue #5 个人主页验收：昵称 / 信用分 / 完成与爽约次数 / 评价人昵称补全
+ *   G. Issue #7 活动列表验收：分页游标 / 去重 / 筛选组合 / 空态 / 时间窗口 / 320px 护栏
  *
  * 运行： node tools/verify.mjs
  */
@@ -578,6 +580,218 @@ check('补不到评价人时降级为 null，不抛错', degraded[0].reviewer ==
 const { readFileSync } = await import('node:fs')
 const cssText = readFileSync(new URL('../frontend/assets/css/app.css', import.meta.url), 'utf8')
 check('样式里有 ≤420px 的窄屏适配规则', /@media\s*\(max-width:\s*420px\)/.test(cssText))
+
+/* ===================================================================== */
+/* G. Issue #7 活动列表与筛选                                             */
+/* ===================================================================== */
+
+section('G. Issue #7 活动列表 + 筛选验收（AC1 列表来自接口 / AC2 组合筛选 / AC3 空态 / AC4 320px）')
+
+resetMock()
+tokenStore.set((await api.login('linhao', 'secret123')).access_token)
+setSession(await api.getMe())
+store.sports = await api.getSports()
+
+/**
+ * 用一份完全可控的假数据替掉 GET /activities，这样可以精确断言
+ * "发了什么查询参数" 和 "翻页游标算得对不对"，不受 fixtures 数量变化影响。
+ */
+const catalog = Array.from({ length: 12 }, (_, i) => {
+  const day = 25 + Math.floor(i / 4)
+  return {
+    id: 900 + i,
+    title: `自检活动 ${i + 1}`,
+    sport: i % 2 ? '篮球' : '羽毛球',
+    campus: i % 3 ? '旗山校区' : '铜盘校区',
+    location: '体育馆 1 号场',
+    start_time: `2026-11-${day}T02:00:00`,
+    end_time: `2026-11-${day}T04:00:00`,
+    skill_level: ['beginner', 'intermediate', 'any'][i % 3],
+    status: 'open',
+    capacity: 6,
+    joined_count: i < 3 ? 6 : 2,
+    slots_left: i < 3 ? 0 : 4, // 前 3 条满员：用来验证「只看还有空位」
+    fee: 0,
+    gender_limit: 'any',
+    organizer: { id: 1, nickname: '林浩', reliability_score: 88 },
+  }
+})
+
+const realGetActivities = api.getActivities
+let lastQuery = null
+let forceFullPage = false
+
+/** 假后端：按真实后端的过滤语义实现（含"先分页后过滤"的 DEF-01 行为）。 */
+function fakeList(query = {}) {
+  lastQuery = { ...query }
+  let list = catalog.slice()
+  if (query.sport) list = list.filter((a) => a.sport === query.sport)
+  if (query.campus) list = list.filter((a) => a.campus === query.campus)
+  if (query.status) list = list.filter((a) => a.status === query.status)
+  if (query.skill_level) {
+    list = list.filter((a) => a.skill_level === query.skill_level || a.skill_level === 'any')
+  }
+  const offset = Number(query.offset ?? 0)
+  const limit = Number(query.limit ?? 8)
+  let page = list.slice(offset, offset + limit)
+  // 后端 DEF-01：only_available 在分页之后才过滤。前端若还传这个参数就会踩坑，
+  // 因此 G 段专门断言前端已经不再传它（改成前端过滤）。
+  if (query.only_available) page = page.filter((a) => a.slots_left > 0)
+  if (forceFullPage) page = catalog.slice(0, limit).map((a) => ({ ...a, slots_left: 0, joined_count: 6 }))
+  // 模拟"同一活动在相邻两页重复出现"（按 start_time 排序 + offset 的经典问题）
+  if (offset === 8) page = page.concat([catalog[0]])
+  return page
+}
+
+api.getActivities = async (q = {}) => fakeList(q)
+
+const { create: createListPage } = await import('../frontend/src/pages/activities.js')
+
+async function openList() {
+  const page = createListPage({})
+  await page.load()
+  return page
+}
+
+const countCards = (html) => (html.match(/data-action="open-activity"/g) ?? []).length
+
+// AC1：列表来自接口，一页 8 条 + 还有更多（先关掉「只看还有空位」，看原始一页）
+let listPage = await openList()
+await listPage.actions['toggle-available'](fakeCtx())
+let listHtml = listPage.view()
+check('AC1 列表首屏来自接口且拿满一页', countCards(listHtml) === 8, `实际 ${countCards(listHtml)} 条`)
+check('AC1 默认只查「可报名」状态', lastQuery?.status === 'open', JSON.stringify(lastQuery))
+check('AC1 默认分页参数 limit=8 / offset=0', lastQuery?.limit === 8 && lastQuery?.offset === 0, JSON.stringify(lastQuery))
+check('AC1 有更多数据时出现「加载更多」', listHtml.includes('加载更多'))
+check(
+  'AC1 不再把 only_available 甩给后端（规避 DEF-01 的提前截断）',
+  !('only_available' in (lastQuery ?? {})),
+  JSON.stringify(lastQuery)
+)
+
+// 翻页：offset 必须等于已取到的原始条数，且重复 id 只保留一条
+await listPage.actions.more(fakeCtx())
+const page2Html = listPage.view()
+check('AC1 第二页 offset=8', lastQuery?.offset === 8, JSON.stringify(lastQuery))
+check(
+  'AC1 重复出现同一活动时按 id 去重',
+  (page2Html.match(/data-action="open-activity" data-id="900"/g) ?? []).length === 1
+)
+check('AC1 12 条全部取完后显示「已经到底了」', page2Html.includes('已经到底了'), '第二页应无更多')
+
+// AC2：筛选组合正确
+listPage = await openList()
+await listPage.actions.filter(fakeCtx({ dataset: { name: 'sport', value: '篮球' } }))
+let html = listPage.view()
+check('AC2 项目筛选生效（6 条篮球里 1 条已满员被隐藏）', countCards(html) === 5, `实际 ${countCards(html)} 条`)
+check('AC2 项目参数进查询串', lastQuery?.sport === '篮球', JSON.stringify(lastQuery))
+
+await listPage.actions.filter(fakeCtx({ dataset: { name: 'campus', value: '铜盘校区' } }))
+html = listPage.view()
+const both = countCards(html)
+check('AC2 项目 + 校区两个条件同时生效', both === 2 && lastQuery?.sport === '篮球' && lastQuery?.campus === '铜盘校区',
+  `实际 ${both} 条 / ${JSON.stringify(lastQuery)}`)
+
+await listPage.actions.filter(fakeCtx({ dataset: { name: 'skill_level', value: 'beginner' } }))
+html = listPage.view()
+check(
+  'AC2 三个条件叠加后结果仍正确（any 水平也算匹配）',
+  countCards(html) === 2 && lastQuery?.skill_level === 'beginner',
+  `实际 ${countCards(html)} 条 / ${JSON.stringify(lastQuery)}`
+)
+
+// AC2：重置筛选
+await listPage.actions.reset(fakeCtx())
+html = listPage.view()
+check('AC2 重置后回到默认筛选', countCards(html) === 5 && lastQuery?.sport === undefined && lastQuery?.campus === undefined,
+  JSON.stringify(lastQuery))
+
+// 「只看还有空位」= 前端过滤，13 条里 3 条满员
+listPage = await openList()
+await listPage.actions['toggle-available'](fakeCtx())
+html = listPage.view()
+check('AC2 取消「只看还有空位」后满员活动也显示', countCards(html) === 8, `实际 ${countCards(html)} 条`)
+await listPage.actions.more(fakeCtx())
+check('AC2 未过滤时 12 条都可见', countCards(listPage.view()) === 12, `实际 ${countCards(listPage.view())} 条`)
+
+listPage = await openList()
+html = listPage.view()
+check('AC2 默认勾选「只看还有空位」时满员活动被隐藏', countCards(html) === 5, `实际 ${countCards(html)} 条`)
+check('AC2 隐藏发生在接口返回之后（一页 8 条里剩 5 条，但仍可继续翻页）', html.includes('加载更多'))
+
+// 整页都满员时不能显示"没有符合条件的活动"
+forceFullPage = true
+listPage = createListPage({})
+await listPage.load()
+html = listPage.view()
+check(
+  'AC3 整页满员时给出「继续加载」提示而不是空态',
+  html.includes('都已经满员') && !html.includes('没有符合条件的活动'),
+  '满员整页被误判成空列表'
+)
+forceFullPage = false
+
+// AC3：空态
+listPage = await openList()
+await listPage.actions.filter(fakeCtx({ dataset: { name: 'sport', value: '攀岩' } }))
+html = listPage.view()
+check('AC3 无结果时显示空态文案', html.includes('没有符合条件的活动'), '缺少空态')
+check('AC3 空态提供「重置筛选」出口', html.includes('data-action="reset"'))
+
+// 时间筛选：必须发 naive UTC（不带宽区后缀），且精确等于本地当天 0 点 / 24 点
+listPage = await openList()
+await listPage.actions.filter(fakeCtx({ dataset: { name: 'date', value: 'today' } }))
+const qFrom = lastQuery?.date_from
+const qTo = lastQuery?.date_to
+check('AC2 时间筛选带上 date_from / date_to', Boolean(qFrom && qTo), JSON.stringify(lastQuery))
+check(
+  'AC2 时间参数是 naive UTC（不带 Z），与后端的 naive 存储对齐',
+  Boolean(qFrom && qTo && !/Z$/.test(qFrom) && !/Z$/.test(qTo)),
+  `${qFrom} ~ ${qTo}`
+)
+const midnight = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
+const asUtc = (s) => new Date(/Z$/i.test(s) ? s : `${s}Z`)
+const delta = asUtc(qTo).getTime() - asUtc(qFrom).getTime()
+check('AC2 时间窗口正好 24 小时', Math.abs(delta - 86400000) < 1000, `${delta} ms`)
+check(
+  'AC2 时间窗口起点等于本地今天 0 点',
+  Math.abs(asUtc(qFrom).getTime() - midnight.getTime()) < 1000,
+  `${qFrom} vs ${midnight.toISOString()}`
+)
+
+// AC2 竞态防护：快速连续点筛选芯片时，旧请求最后返回也不能覆盖新筛选结果
+{
+  const pending = []
+  api.getActivities = (q = {}) =>
+    new Promise((res) => {
+      pending.push({ q, res })
+    })
+  const racePage = createListPage({})
+  const first = racePage.load()
+  const second = racePage.actions.filter(fakeCtx({ dataset: { name: 'sport', value: '篮球' } }))
+  // 先放行新请求（篮球），再放行旧请求（默认筛选），看旧响应会不会把列表打回原形
+  pending[1].res(catalog.filter((a) => a.sport === '篮球').slice(0, 8))
+  await new Promise((r) => setTimeout(r, 30))
+  pending[0].res(catalog.slice(0, 8))
+  await new Promise((r) => setTimeout(r, 30))
+  await first
+  await second
+  const raceHtml = racePage.view()
+  check(
+    'AC2 快速切换筛选时，旧响应不覆盖新结果（stale-response 竞态防护）',
+    countCards(raceHtml) === 5 && raceHtml.includes('自检活动 4') && !raceHtml.includes('自检活动 3'),
+    `卡片数 ${countCards(raceHtml)}`
+  )
+}
+
+// AC4：320px 下的静态保障（像素级验收见 docs/issue7-activity-list.md 的复现步骤）
+const { readFileSync: readCss } = await import('node:fs')
+const listCss = readCss(new URL('../frontend/assets/css/app.css', import.meta.url), 'utf8')
+check('AC4 存在 ≤360px 的窄屏护栏规则', /@media\s*\(max-width:\s*360px\)/.test(listCss))
+check('AC4 卡片标题允许断词，长标题不会撑破容器', /\.sm-act__title[^}]*overflow-wrap:\s*anywhere/s.test(listCss))
+check('AC4 筛选芯片横向滚动而不是撑破页面', /\.sm-filters[^}]*overflow-x:\s*auto/s.test(listCss))
+
+api.getActivities = realGetActivities
 
 /* ===================================================================== */
 /* 汇总                                                                  */

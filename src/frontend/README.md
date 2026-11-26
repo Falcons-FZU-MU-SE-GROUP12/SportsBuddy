@@ -268,12 +268,53 @@ http://127.0.0.1:5178/frontend/?mock=0#/me          我的主页（需要先登�
 
 ---
 
+## 四点六、活动列表接真实后端联调（Issue #7）
+
+Alpha Sprint 的 #7「活动列表 + 筛选」把 P-03 接到了真实后端的 `GET /activities` 上，并补了 28 项验收断言、7 张真实后端运行截图。
+
+```powershell
+cd src/frontend
+node tools/verify.mjs                  # 140 项：原有 112 项 + #7 验收 G 段 28 项
+node tools/server.mjs                  # http://127.0.0.1:5178/frontend/
+```
+
+打开 `http://127.0.0.1:5178/frontend/?mock=0#/activities` 即为真实后端模式（需先起 `src/backend` 并跑 `node tools/seed-demo.mjs`、`node tools/seed7.mjs`）。
+
+### 三个必须知道的联调结论
+
+| 问题 | 现在的做法 | 说明 |
+|---|---|---|
+| 后端的 `only_available` 是"先分页、后过滤" | 前端不传该参数，按 `slots_left` 本地过滤 | 否则一页被筛掉几条，`返回条数 < 8` 会被误判成"没有更多"，列表停在第 3 屏（DEF-01） |
+| 后端 `start_time` 是 naive UTC | 时间筛选统一走 `format.js` 的 `toBackendUtc()`（不带 `Z`） | 传带 `+00:00` 的串会被 SQLite 按字符串比较，"今天"整天查不出来（DEF-02） |
+| 快速连点筛选芯片，旧响应会覆盖新结果 | `state.reqId` 请求令牌，过期响应直接丢弃 | 截图脚本自动化点击时真实复现的 stale-response 竞态（DEF-03） |
+
+根因、建议的后端修法与证据见 [`docs/issue7-activity-list.md`](../../docs/issue7-activity-list.md)，
+运行截图见 [`docs/shots/issue7-list-*.png`](../../docs/shots/)。
+
+### 怎么出截图
+
+```powershell
+node tools/seed7.mjs   # 造 5 用户 + 12 场活动（2 场满员），让列表/分页/筛选有真实数据
+node tools/shot7.mjs --url="http://127.0.0.1:5178/frontend/?mock=0#/activities" `
+  --out="../docs/shots/issue7-list-390.png" --w=390 --h=844
+# 交互画面用 --eval 先点筛选再截，例如空态：
+node tools/shot7.mjs --url="http://127.0.0.1:5178/frontend/?mock=0#/activities" `
+  --out="../docs/shots/issue7-list-empty-390.png" --w=390 --h=844 `
+  --eval="document.querySelector('[data-name=\"sport\"][data-value=\"足球\"]').click();document.querySelector('[data-name=\"campus\"][data-value=\"旗山校区\"]').click()"
+```
+
+> 无头浏览器在 DSH 沙盒里起不来（禁 Chromium 命名管道 IPC），截图脚本要在普通桌面环境跑。
+
+没有浏览器时，`node tools/snapshot7.mjs` 仍可生成自包含 HTML 版式快照（`view()` 输出 + 内联 `app.css`）。
+
+---
+
 ## 五、自检与再生成
 
 "界面是否正确"用**程序化校验**兜底，不是靠肉眼：
 
 ```powershell
-node tools/verify.mjs                 # 112 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析 / #5 个人主页
+node tools/verify.mjs                 # 140 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析 / #5 个人主页 / #7 活动列表
 node tools/check-links.mjs            # 5 个入口页面的 js/css/svg 引用全部可达
 python tools/render-class-diagram.py  # 由 .mmd 生成 SVG + HTML
 python tools/check-class-diagram.py   # 类图几何校验：文字不溢出、连线不穿框、画布不截断
@@ -298,7 +339,11 @@ node tools/build-prototype.mjs        # 重新生成原型页
 - **C. 页面渲染**：11 个页面的 HTML 标签配平、无 `undefined`/`NaN`、
   所有 `data-action` 都有对应处理函数；游客态再跑一遍；
 - **D. 时区**：不带时区按 UTC 解析、带 `Z` 不重复补、`+08:00` 与 `+0800` 都能识别，
-  并专门回归"少 8 小时"这个经典 bug。
+  并专门回归"少 8 小时"这个经典 bug；
+- **E. 一句话找局**：中英文混排的查询能解析成结构化筛选，并且解析不出来的部分不会瞎猜；
+- **F. Issue #5 个人主页**：昵称 / 信用分 / 完成与爽约次数 / 评价人昵称补全；
+- **G. Issue #7 活动列表**：分页游标、id 去重、四类筛选组合、空态、满员整页、
+  时间窗口是 naive UTC、320px 静态护栏、stale-response 竞态。
 
 最近一次运行结果：
 
@@ -308,8 +353,10 @@ B. 业务规则（对照《前端对接文档》）·· 13 项通过
 C. 页面渲染与 data-action 契约 ····· 39 项通过
 D. 时区与格式化 ··················· 12 项通过
 E. 一句话找局解析 ················· 14 项通过
+F. Issue #5 个人主页验收 ·········· 13 项通过
+G. Issue #7 活动列表验收 ·········· 28 项通过
 ────────────────────────────────────────
-全部通过：99 项检查
+全部通过：140 项检查
 ```
 
 类图几何校验：
