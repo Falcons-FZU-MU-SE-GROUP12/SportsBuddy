@@ -6,6 +6,7 @@ import math
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import config
@@ -390,6 +391,20 @@ def _skill_compatible(activity_level: SkillLevel, user_level: SkillLevel) -> boo
     return activity_level is user_level
 
 
+def _lock_activity_for_write(db: Session, activity_id: int) -> None:
+    """Serialize concurrent sign-ups for one activity.
+
+    SQLite has no row-level locking, so its lock is taken globally by the
+    ``BEGIN IMMEDIATE`` transaction opener in ``db.py`` — this helper is a no-op
+    there. On Postgres it locks just this activity's row with ``FOR UPDATE`` so
+    two joins for the same activity cannot both pass the capacity check.
+    """
+    if db.get_bind().dialect.name == "postgresql":
+        db.execute(
+            select(Activity.id).where(Activity.id == activity_id).with_for_update()
+        )
+
+
 def join_activity(db: Session, activity: Activity, user: User, note: str = "") -> Registration:
     if activity.status is ActivityStatus.cancelled:
         raise ServiceError("活动已取消")
@@ -412,6 +427,12 @@ def join_activity(db: Session, activity: Activity, user: User, note: str = "") -
             f"该活动要求 {activity.skill_level.value} 水平，与你的水平不匹配"
         )
 
+    # First statement inside the critical section: on SQLite this begins an
+    # IMMEDIATE transaction and takes the write lock; on Postgres it locks the
+    # activity row. Every read below therefore sees committed state, never a
+    # stale snapshot, closing the check-capacity-then-insert race (DEF-01).
+    _lock_activity_for_write(db, activity.id)
+
     existing = db.scalar(
         select(Registration).where(
             Registration.activity_id == activity.id, Registration.user_id == user.id
@@ -420,7 +441,21 @@ def join_activity(db: Session, activity: Activity, user: User, note: str = "") -
     if existing and existing.status is not RegistrationStatus.cancelled:
         raise ServiceError("你已经报名过该活动", 409)
 
-    if activity.slots_left <= 0:
+    active_count = db.scalar(
+        select(func.count())
+        .select_from(Registration)
+        .where(
+            Registration.activity_id == activity.id,
+            Registration.status.in_(
+                (
+                    RegistrationStatus.registered,
+                    RegistrationStatus.checked_in,
+                    RegistrationStatus.attended,
+                )
+            ),
+        )
+    )
+    if active_count >= activity.capacity:
         raise ServiceError("活动已满员", 409)
 
     if existing:  # re-joining after cancelling
@@ -438,8 +473,20 @@ def join_activity(db: Session, activity: Activity, user: User, note: str = "") -
         db.add(registration)
 
     db.flush()
-    refresh_activity_status(activity)
-    db.commit()
+    # Derive the status from the authoritative head count, not the relationship
+    # cache loaded earlier in the request.
+    activity.status = (
+        ActivityStatus.full
+        if active_count + 1 >= activity.capacity
+        else ActivityStatus.open
+    )
+    try:
+        db.commit()
+    except IntegrityError:
+        # The (activity_id, user_id) unique constraint fired: another request
+        # won the race for this exact user. Report it as a plain duplicate.
+        db.rollback()
+        raise ServiceError("你已经报名过该活动", 409) from None
     db.refresh(registration)
     return registration
 

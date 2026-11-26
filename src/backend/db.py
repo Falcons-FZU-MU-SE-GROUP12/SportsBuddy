@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 import config
@@ -20,8 +20,9 @@ class Base(DeclarativeBase):
 def _engine_kwargs(url: str) -> dict:
     if url.startswith("sqlite"):
         # check_same_thread=False is required because FastAPI runs sync
-        # endpoints in a thread pool.
-        return {"connect_args": {"check_same_thread": False}}
+        # endpoints in a thread pool. ``timeout`` makes a second writer wait
+        # (up to 30s) for the database lock instead of failing instantly.
+        return {"connect_args": {"check_same_thread": False, "timeout": 30}}
     return {"pool_pre_ping": True}
 
 
@@ -70,6 +71,24 @@ _ensure_sqlite_directory(config.DATABASE_URL)
 
 engine = create_engine(config.DATABASE_URL, **_engine_kwargs(config.DATABASE_URL))
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
+# SQLite has no row-level locking, so a "check capacity -> insert" race can
+# over-subscribe an activity (DEF-01).  We make every SQLite transaction start
+# with ``BEGIN IMMEDIATE``: the write lock is taken *before* any read inside the
+# transaction, serialising concurrent writers so a later transaction re-reads
+# the committed head count instead of a stale one.  Postgres is unaffected and
+# keeps its normal per-row locking (see services.join_activity).
+if engine.dialect.name == "sqlite":
+
+    @event.listens_for(engine, "connect")
+    def _sqlite_connect(dbapi_connection, _connection_record) -> None:
+        # Disable pysqlite's implicit BEGIN/COMMIT so we control the statement.
+        dbapi_connection.isolation_level = None
+
+    @event.listens_for(engine, "begin")
+    def _sqlite_begin(conn) -> None:
+        conn.exec_driver_sql("BEGIN IMMEDIATE")
 
 
 def utcnow() -> datetime:
