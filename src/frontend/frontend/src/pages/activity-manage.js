@@ -175,7 +175,7 @@ export function create(params = {}) {
                  </button>
                </div>
                <p class="sm-card__hint" style="margin-top:8px">
-                 未勾选的人会被记为爽约并扣 15 分信用分。
+                 未勾选的人会被记为爽约并扣 ${RULES.NO_SHOW_PENALTY} 分信用分。
                </p>`
             : `<div style="margin-top:12px">${alert('info', '活动开始后才需要记录考勤。到时回到这一页即可。')}</div>`
         }

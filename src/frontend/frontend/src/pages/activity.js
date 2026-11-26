@@ -441,7 +441,7 @@ export function create(params = {}) {
             <span class="sm-sheet__title">记录考勤</span>
             <button class="sm-backbtn" type="button" data-action="close-layer" aria-label="关闭">✕</button>
           </div>
-          ${alert('warn', '勾选【实际到场】的人。没勾选的会被记为爽约，并扣 15 分信用分，请确认后再提交。')}
+          ${alert('warn', '勾选【实际到场】的人。没勾选的会被记为爽约，并扣 ${RULES.NO_SHOW_PENALTY} 分信用分，请确认后再提交。')}
           <form data-action="do-attendance" style="margin-top:12px">
             ${list.map((p) => memberRow(p, { checkbox: true, checked: state.attended.includes(p.user_id) })).join('')}
             <div class="sm-row" style="margin-top:14px">

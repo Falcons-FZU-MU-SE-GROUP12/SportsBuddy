@@ -309,12 +309,35 @@ node tools/shot7.mjs --url="http://127.0.0.1:5178/frontend/?mock=0#/activities" 
 
 ---
 
+## 四点七、报名 / 取消报名联调（Issue #9）
+
+Alpha Sprint 的 #9「Sign up / cancel sign-up」把详情页报名链路接到了真实后端，
+并把前端信用分规则常量与后端 `config.py` 对齐（初始 80 / 临期取消 -2 / 爽约 -10）。
+
+```powershell
+node tools/seed9.mjs     # 6 用户 + 4 演示活动；low9 信用分打到 50
+node tools/verify.mjs    # 161 项：H 段 21 项为 #9 验收（含 H0 规则常量防漂移断言）
+```
+
+登录 `join9 / sportmate123`（低信用分账号 `low9 / sportmate123`）打开：
+
+```text
+http://127.0.0.1:5178/frontend/?mock=0#/activity/1   # 可报名
+http://127.0.0.1:5178/frontend/?mock=0#/activity/2   # 已满员
+http://127.0.0.1:5178/frontend/?mock=0#/activity/3   # 90 分钟后开始（临期取消演示）
+http://127.0.0.1:5178/frontend/?mock=0#/activity/4   # 低信用分演示
+```
+
+验收对照、接口实测与 5 张运行截图见 [`docs/issue9-join-leave.md`](../../docs/issue9-join-leave.md)。
+
+---
+
 ## 五、自检与再生成
 
 "界面是否正确"用**程序化校验**兜底，不是靠肉眼：
 
 ```powershell
-node tools/verify.mjs                 # 140 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析 / #5 个人主页 / #7 活动列表
+node tools/verify.mjs                 # 161 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析 / #5 个人主页 / #7 活动列表 / #9 报名取消
 node tools/check-links.mjs            # 5 个入口页面的 js/css/svg 引用全部可达
 python tools/render-class-diagram.py  # 由 .mmd 生成 SVG + HTML
 python tools/check-class-diagram.py   # 类图几何校验：文字不溢出、连线不穿框、画布不截断
@@ -355,8 +378,9 @@ D. 时区与格式化 ··················· 12 项通过
 E. 一句话找局解析 ················· 14 项通过
 F. Issue #5 个人主页验收 ·········· 13 项通过
 G. Issue #7 活动列表验收 ·········· 28 项通过
+H. Issue #9 报名 / 取消验收 ········ 21 项通过
 ────────────────────────────────────────
-全部通过：140 项检查
+全部通过：161 项检查
 ```
 
 类图几何校验：

@@ -190,7 +190,7 @@ export function create(params = {}) {
       <section class="sm-card sm-card--flat">
         <p class="sm-card__hint">
           签到成功后状态会变成「已签到」。若长时间无法签到，先把情况告诉发起人，
-          避免被记为爽约（会扣 15 分信用分）。
+          避免被记为爽约（会扣 ${RULES.NO_SHOW_PENALTY} 分信用分）。
         </p>
       </section>
     </main>`

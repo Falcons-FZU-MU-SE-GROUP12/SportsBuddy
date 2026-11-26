@@ -152,7 +152,7 @@ function activityDetail(a, me) {
         user_id: r.user_id,
         nickname: u?.nickname ?? `用户${r.user_id}`,
         skill_level: u?.skill_level ?? 'any',
-        reliability_score: u?.reliability_score ?? 100,
+        reliability_score: u?.reliability_score ?? 80,
         status: r.status,
         note: r.note ?? '',
         checked_in_at: r.checked_in_at ?? null,
@@ -206,7 +206,7 @@ export async function mockFetch(url, init = {}) {
       campus: body?.campus || '旗山校区',
       skill_level: body?.skill_level || 'any',
       favorite_sports: body?.favorite_sports || [],
-      reliability_score: 100,
+      reliability_score: 80,
       completed_count: 0,
       no_show_count: 0,
       created_at: nowIso(),
@@ -452,7 +452,7 @@ export async function mockFetch(url, init = {}) {
       existing.status = 'cancelled'
       existing.is_late_cancel = late
       if (late) {
-        me.reliability_score = Math.max(0, me.reliability_score - 5)
+        me.reliability_score = Math.max(0, me.reliability_score - 2)
       }
       const view = activityView(a)
       if (a.status === 'full' && view.slots_left > 0) a.status = 'open'
@@ -526,7 +526,7 @@ export async function mockFetch(url, init = {}) {
         noShow.push(r.user_id)
         const u = db.users.find((x) => x.id === r.user_id)
         if (u) {
-          u.reliability_score = Math.max(0, u.reliability_score - 15)
+          u.reliability_score = Math.max(0, u.reliability_score - 10)
           u.no_show_count += 1
           scoreChanges[r.user_id] = -15
         }

@@ -204,7 +204,7 @@ lateOne.start_time = new Date(Date.now() + 30 * 60000).toISOString().replace(/\.
 await api.joinActivity(101, '')
 const left = await api.leaveActivity(101)
 check('距开始不足 2 小时取消 → is_late_cancel = true', left.is_late_cancel === true, JSON.stringify(left))
-check('临期取消后信用分被扣 5 分', (await api.getMe()).reliability_score === 91, `实际 ${(await api.getMe()).reliability_score}`)
+check('临期取消后信用分被扣 2 分', (await api.getMe()).reliability_score === 94, `实际 ${(await api.getMe()).reliability_score}`)
 
 // 考勤：未勾选者记为爽约
 resetMock()
@@ -792,6 +792,101 @@ check('AC4 卡片标题允许断词，长标题不会撑破容器', /\.sm-act__t
 check('AC4 筛选芯片横向滚动而不是撑破页面', /\.sm-filters[^}]*overflow-x:\s*auto/s.test(listCss))
 
 api.getActivities = realGetActivities
+
+/* ===================================================================== */
+/* H. Issue #9 报名 / 取消报名                                             */
+/* ===================================================================== */
+
+section('H. Issue #9 报名 / 取消验收（AC1 报名更新状态 / AC2 满员不可报 / AC3 信用分<60 不可报 / AC4 开始前可取消）')
+
+// H0：前端规则常量必须与后端 config.py 对齐（本轮同步的正是这几处，加断言防止再漂移）
+{
+  const { RULES } = await import('../frontend/src/shared/domain.js')
+  check('H0 RULES.MIN_CREDIT = 60（对齐后端 RELIABILITY_JOIN_THRESHOLD）', RULES.MIN_CREDIT === 60, String(RULES.MIN_CREDIT))
+  check('H0 RULES.DEFAULT_CREDIT = 80（对齐后端 RELIABILITY_INITIAL）', RULES.DEFAULT_CREDIT === 80, String(RULES.DEFAULT_CREDIT))
+  check('H0 RULES.LATE_CANCEL_PENALTY = 2（对齐后端 LATE_CANCEL_DELTA）', RULES.LATE_CANCEL_PENALTY === 2, String(RULES.LATE_CANCEL_PENALTY))
+  check('H0 RULES.NO_SHOW_PENALTY = 10（对齐后端 RELIABILITY_NO_SHOW_DELTA）', RULES.NO_SHOW_PENALTY === 10, String(RULES.NO_SHOW_PENALTY))
+  check('H0 RULES.LATE_CANCEL_HOURS = 2（对齐后端 LATE_CANCEL_WINDOW_MINUTES=120）', RULES.LATE_CANCEL_HOURS === 2, String(RULES.LATE_CANCEL_HOURS))
+}
+
+// AC1：报名成功 → 状态与名额随之更新
+resetMock()
+tokenStore.set((await api.login('linhao', 'secret123')).access_token)
+setSession(await api.getMe())
+store.sports = await api.getSports()
+
+let mine9 = await api.getMyActivities()
+check('AC1 报名前「我报名的」不含 105', !mine9.joined.some((a) => a.id === 105), JSON.stringify(mine9.joined.map((a) => a.id)))
+const before105 = await api.getActivity(105, true)
+await api.joinActivity(105, '第一次来，多担待')
+mine9 = await api.getMyActivities()
+check('AC1 报名后出现在「我报名的」里', mine9.joined.some((a) => a.id === 105), JSON.stringify(mine9.joined.map((a) => a.id)))
+const after105 = await api.getActivity(105, true)
+check('AC1 报名后名额 -1', before105.slots_left - after105.slots_left === 1, `${before105.slots_left} → ${after105.slots_left}`)
+check('AC1 详情 participants 含当前用户', after105.participants.some((p) => p.user_id === store.me.id), JSON.stringify(after105.participants))
+await expectStatus('AC1 重复报名返回 409', () => api.joinActivity(105), 409, '报名')
+
+const page105 = (await import('../frontend/src/pages/activity.js')).create({ id: '105' })
+await page105.load()
+const html105 = page105.view()
+check('AC1 已报名后详情页出现「取消报名」与「去签到」', html105.includes('取消报名') && html105.includes('去签到'), '缺少按钮')
+
+// AC4：开始前取消 → 释放名额、可重新报名、按钮状态还原
+await api.leaveActivity(105)
+mine9 = await api.getMyActivities()
+check('AC4 取消后从「我报名的」消失', !mine9.joined.some((a) => a.id === 105), JSON.stringify(mine9.joined.map((a) => a.id)))
+const afterLeave = await api.getActivity(105, true)
+check('AC4 取消后名额恢复到报名前', afterLeave.slots_left === before105.slots_left, `${before105.slots_left} → ${afterLeave.slots_left}`)
+await api.joinActivity(105)
+check('AC4 取消后可重新报名成功', (await api.getMyActivities()).joined.some((a) => a.id === 105))
+const page105b = (await import('../frontend/src/pages/activity.js')).create({ id: '105' })
+await page105b.load()
+check('AC4 重新报名后按钮回到「取消报名」', page105b.view().includes('取消报名'))
+
+// AC2：满员 → 409，页面按钮禁用（用一个新注册的账号，避免撞上"已报名"的 409）
+resetMock()
+const h9 = await api.register({
+  username: `h9_${Date.now() % 100000}`,
+  password: 'secret123',
+  nickname: '满员验收',
+  campus: '旗山校区',
+  skill_level: 'any',
+  favorite_sports: [],
+})
+tokenStore.set(h9.access_token)
+setSession(await api.getMe())
+const full103 = await api.getActivity(103, true)
+let topUp = 900
+while (full103.slots_left > 0 && topUp < 910) {
+  db.registrations.push({ activity_id: 103, user_id: topUp, status: 'registered', note: '', is_late_cancel: false })
+  topUp += 1
+  full103.slots_left -= 1
+}
+await expectStatus('AC2 满员活动报名返回 409', () => api.joinActivity(103), 409, '满员')
+const page103 = (await import('../frontend/src/pages/activity.js')).create({ id: '103' })
+await page103.load()
+const html103 = page103.view()
+check('AC2 满员时按钮为「名额已满」且禁用', html103.includes('名额已满') && /disabled/.test(html103.match(/<button[^>]*data-action="open-join"[^>]*>/)?.[0] ?? ''), '按钮状态不对')
+
+// AC3：信用分 < 60 → 403，页面提前禁用并说明原因
+resetMock()
+tokenStore.set('mock-token-8') // 高飞，信用分 58
+const gaofei = await api.getMe()
+setSession(gaofei)
+await expectStatus('AC3 信用分低于 60 报名返回 403', () => api.joinActivity(102), 403, '信用分')
+const page102 = (await import('../frontend/src/pages/activity.js')).create({ id: '102' })
+await page102.load()
+const html102 = page102.view()
+check('AC3 详情页给出信用分不足的说明', html102.includes('暂时无法报名新活动') && html102.includes(String(gaofei.reliability_score)))
+check('AC3 「立即报名」按钮被禁用', /disabled/.test(html102.match(/<button[^>]*data-action="open-join"[^>]*>/)?.[0] ?? ''))
+
+// 报名入口在未登录时引导登录
+resetMock()
+setSession(null)
+tokenStore.clear()
+const pageGuest = (await import('../frontend/src/pages/activity.js')).create({ id: '105' })
+await pageGuest.load()
+check('AC1 未登录时详情页引导登录报名', pageGuest.view().includes('登录后即可报名'))
 
 /* ===================================================================== */
 /* 汇总                                                                  */

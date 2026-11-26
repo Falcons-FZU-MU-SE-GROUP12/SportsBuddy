@@ -133,7 +133,7 @@ export const api = {
 
   /**
    * 取消报名。DELETE /activities/{id}/join
-   * ⚠️ 返回里 is_late_cancel === true 表示"开始前 2 小时内取消"，会扣 5 分信用分，
+   * ⚠️ 返回里 is_late_cancel === true 表示"开始前 2 小时内取消"，会扣 2 分信用分，
    *    界面应在此之前给出二次确认。
    */
   leaveActivity(id) {

@@ -101,11 +101,13 @@ export const CHECKIN_METHOD_TEXT = {
 export const RULES = {
   /** 信用分低于该值无法报名新活动（后端 403）。 */
   MIN_CREDIT: 60,
-  /** 新账号默认信用分。 */
-  DEFAULT_CREDIT: 100,
+  /** 新账号默认信用分（后端 config.RELIABILITY_INITIAL）。 */
+  DEFAULT_CREDIT: 80,
   /** 开始前 N 小时内取消报名，扣 LATE_CANCEL_PENALTY 分。 */
   LATE_CANCEL_HOURS: 2,
-  LATE_CANCEL_PENALTY: 5,
+  LATE_CANCEL_PENALTY: 2,
+  /** 爽约一次扣的信用分（后端 config.RELIABILITY_NO_SHOW_DELTA）。 */
+  NO_SHOW_PENALTY: 10,
   /** 签到码位数。 */
   CODE_LENGTH: 4,
   /** 定位签到的最大距离（米）。 */

@@ -320,7 +320,7 @@ export function create() {
           </div>
         </div>
         <p class="sm-card__hint" style="margin-top:10px">
-          信用分低于 ${RULES.MIN_CREDIT} 分无法报名新活动；距开始 ${RULES.LATE_CANCEL_HOURS} 小时内取消报名扣 ${RULES.LATE_CANCEL_PENALTY} 分；爽约扣 15 分。
+          信用分低于 ${RULES.MIN_CREDIT} 分无法报名新活动；距开始 ${RULES.LATE_CANCEL_HOURS} 小时内取消报名扣 ${RULES.LATE_CANCEL_PENALTY} 分；爽约扣 ${RULES.NO_SHOW_PENALTY} 分。
         </p>
       </section>
 
