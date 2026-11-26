@@ -29,7 +29,13 @@
 ```bash
 cd sportmate-backend
 
-# 启动（依赖已就绪，直接跑）
+# 1) 安装依赖
+pip install -r requirements.txt
+
+# 2) 写入演示数据（3 个演示账号 + 3 场活动 + 2 条报名，可重复执行）
+python seed_demo.py
+
+# 3) 启动
 py -m uvicorn main:app --reload --port 8000
 ```
 
@@ -38,13 +44,15 @@ py -m uvicorn main:app --reload --port 8000
 
 首次启动会自动建表并写入 10 个运动项目种子数据（篮球 / 羽毛球 / 足球 / 乒乓球 / 网球 / 跑步 / 徒步 / 骑行 / 健身 / 排球）。
 
+**演示账号**（密码均为 `demo123456`）：`demo_org`（张三，发起者）/ `demo_lisi`（李四）/ `demo_wangwu`（王五）。
+
 ### 跑测试
 
 ```bash
 py -m pytest -q
 ```
 
-34 个测试覆盖完整业务闭环，包括防爽约、签到围栏、评价权限、匹配排序、信用分上下限。
+76 个测试覆盖完整业务闭环，包括防爽约、签到围栏、评价权限、匹配排序、信用分上下限，以及每个 Sprint Issue 的验收用例。
 
 代码规范检查：
 
@@ -70,6 +78,8 @@ sportmate-backend/
 ├── converters.py        # ORM → 响应模型（含字段可见性控制）
 ├── deps.py              # FastAPI 依赖：数据库会话、当前用户
 ├── routers.py           # 全部 HTTP 路由
+├── seed_demo.py         # 演示数据种子（3 账号 + 3 活动 + 报名），幂等
+├── tools/race_probe.py  # DEF-01 并发报名竞态复现探针（退出码 0=未复现）
 ├── tests/
 │   ├── conftest.py      # 内存库 fixture、注册/建活动辅助函数
 │   ├── test_flow.py     # 端到端业务流程测试
@@ -281,9 +291,19 @@ git push -u origin main
 
 ---
 
-## 11. 后续可做
+## 11. 部署与后续可做
 
-- **并发抢位**：当前"检查容量 → 写入报名"之间存在竞态窗口，高并发下可能超员。生产环境应加唯一约束 + 事务重试，或直接改成 `SELECT ... FOR UPDATE`。
+### 部署（演示环境 / S16 #19）
+
+- **本地一键**：见上文「快速开始」——`pip install -r requirements.txt && python seed_demo.py && uvicorn main:app --port 8000`。
+- **Docker**：仓库根目录已提供 `Dockerfile` + `docker-compose.yml`，`docker compose up -d` 即可启动（数据持久化在 `sportmate-data` 卷）。
+- **Render 一键部署**：`render.yaml` 已配置，登录 Render 后打开
+  `https://render.com/deploy?repo=https://github.com/Falcons-FZU-MU-SE-GROUP12/SportsBuddy`
+  即可自动部署（免费实例使用 SQLite，重启会重置数据，仅用于演示/验收）。
+
+### 后续可做
+
+- **并发抢位（已修复 DEF-01）**：报名写入改为 SQLite `BEGIN IMMEDIATE`（Postgres 下 `SELECT … FOR UPDATE`）+ 唯一约束，满员返回 409；`tools/race_probe.py` 复测不再超员。
 - **推送通知**：活动变更/临期提醒（WebSocket 或微信服务号模板消息）。
 - **真实用户体系**：接入学校统一认证，替代用户名密码。
 - **活动搜索**：`activities.title/description` 全文检索（SQLite FTS5 → PostgreSQL `tsvector`）。
