@@ -24,6 +24,12 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-26 | zhangjt123 | 修复 | `src/backend/db.py`、`src/backend/services.py` | 修复 DEF-01 并发报名超员：SQLite 事务改用 `BEGIN IMMEDIATE`（Postgres 用 `SELECT…FOR UPDATE`）+ `(activity_id,user_id)` 唯一约束兜底，报名改为加锁后重查人数、满员返回 409；`tools/race_probe.py` 复测 12 并发仅 2 个 201、10 个 409，退出码 0（不再超员） | 作业五 |
+| 2026-11-26 | zhangjt123 | 新增 | `src/backend/seed_demo.py`、`src/backend/README.md` | Issue #19 演示环境：新增幂等演示种子脚本（3 账号 + 3 活动 + 2 报名，可重复执行），README 补一键演示/演示账号/Docker/Render 部署说明，修正测试数并标注 DEF-01 已修复 | 作业五 |
+| 2026-11-26 | zhangjt123 | 新增 | `src/backend/tests/test_issue14_reviews_acceptance.py` | 为 Issue #14 增加评价验收测试（星数与标签保存、重复评价 409、仅到场者可评），3 条用例全部通过 | 作业五 |
+| 2026-11-26 | zhangjt123 | 新增 | `src/backend/tests/test_issue13_my_activities_acceptance.py` | 为 Issue #13 增加我的活动验收测试（我发起/我报名分组、状态与详情 id、需登录），3 条用例全部通过 | 作业五 |
+| 2026-11-26 | zhangjt123 | 新增 | `src/backend/tests/test_issue12_attendance_acceptance.py` | 为 Issue #12 增加考勤验收测试（组织者勾选到场、爽约扣 10 分、仅发起人可记考勤），3 条用例全部通过 | 作业五 |
+| 2026-11-26 | zhangjt123 | 新增 | `src/backend/tests/test_issue11_checkin_acceptance.py` | 为 Issue #11 增加签到验收测试（签到码签到成功、未报名 404、重复签到 409、定位围栏 300 米），4 条用例全部通过 | 作业五 |
 | 2026-11-24 | Haoze Li (PR #23) | 新增/修改 | `src/frontend/` | 合入 Issue #7：活动列表分页/筛选/竞态防护、naive UTC 时区修复、320px 护栏；verify 140 项通过 | 作业五 |
 | 2026-11-24 | zhangjt123 | 新增 | `src/backend/tests/test_issue9_join_leave_acceptance.py` | 为 Issue #9 增加报名/取消报名验收测试（报名更新状态与名额、满员 409、信用分低于 60 拦截 403、开始前取消释放名额且可重新报名），5 条用例全部通过 | 作业五 |
 | 2026-11-24 | zhangjt123 | 新增 | `src/backend/tests/test_issue8_activity_detail_acceptance.py` | 为 Issue #8 增加活动详情验收测试（按 id 加载、报名名单与状态可见、满员状态联动、签到码仅发起人可见），4 条用例全部通过 | 作业五 |
