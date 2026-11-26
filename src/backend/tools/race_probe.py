@@ -2,7 +2,7 @@
 
 The backend README (§11) states:
 
-    "当前『检查容量 → 写入报名』之间存在竞态窗口，高并发下可能超员。"
+    "当前[检查容量 -> 写入报名]之间存在竞态窗口, 高并发下可能超员。"
 
 The in-process TestClient serialises everything through one SQLite connection,
 so the race cannot show up there. This probe therefore starts a real uvicorn
@@ -24,7 +24,7 @@ import tempfile
 import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -97,8 +97,8 @@ def main() -> int:
         organizer = call("POST", "/auth/register", payload={
             "username": "race_org", "password": "secret123", "nickname": "组织者",
         })[1]["access_token"]
-        start = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
-        end = (datetime.now(timezone.utc) + timedelta(hours=26)).isoformat()
+        start = (datetime.now(UTC) + timedelta(hours=24)).isoformat()
+        end = (datetime.now(UTC) + timedelta(hours=26)).isoformat()
         status, activity = call("POST", "/activities", organizer, {
             "title": "竞态测试局", "sport": "篮球", "campus": "旗山校区",
             "location": "风雨操场", "start_time": start, "end_time": end,

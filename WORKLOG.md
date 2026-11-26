@@ -24,6 +24,7 @@
 
 | 日期 | 成员 (GitHub) | 类型 | 涉及文件/目录 | 内容说明 | 关联作业 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-26 | JorgeHUANG7 | 修复 | `src/backend/tools/race_probe.py` | 修复 ruff RUF002/UP017：docstring 全角标点改 ASCII，timezone.utc 改 datetime.UTC | 作业五 |
 | 2026-11-26 | Haoze Li | 新增/修改 | `src/frontend/`、`docs/issue9-join-leave.md`、`docs/shots/` | 完成 Issue #9：报名/取消接真实后端，信用分常量对齐后端（80/2/10），新增 verify H 段（140→161）、seed9 与 5 张运行截图 | 作业五 |
 | 2026-11-26 | zhangjt123 | 修复 | `src/backend/db.py`、`src/backend/services.py` | 修复 DEF-01 并发报名超员：SQLite 事务改用 `BEGIN IMMEDIATE`（Postgres 用 `SELECT…FOR UPDATE`）+ `(activity_id,user_id)` 唯一约束兜底，报名改为加锁后重查人数、满员返回 409；`tools/race_probe.py` 复测 12 并发仅 2 个 201、10 个 409，退出码 0（不再超员） | 作业五 |
 | 2026-11-26 | zhangjt123 | 新增 | `src/backend/seed_demo.py`、`src/backend/README.md` | Issue #19 演示环境：新增幂等演示种子脚本（3 账号 + 3 活动 + 2 报名，可重复执行），README 补一键演示/演示账号/Docker/Render 部署说明，修正测试数并标注 DEF-01 已修复 | 作业五 |
