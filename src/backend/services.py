@@ -632,35 +632,10 @@ def record_attendance(
         if after[2] != before[2]:
             changes[str(user_id)] = after[2] - before[2]
 
-    # Organisers who show up also earn credit, and get a registration row so
-    # they can be reviewed like everybody else.
-    if attended_ids:
-        organizer = db.get(User, activity.organizer_id)
-        if organizer:
-            before = organizer.reliability_score
-            organizer_registration = db.scalar(
-                select(Registration).where(
-                    Registration.activity_id == activity.id,
-                    Registration.user_id == organizer.id,
-                )
-            )
-            if organizer_registration is None:
-                organizer_registration = Registration(
-                    activity_id=activity.id,
-                    user_id=organizer.id,
-                    status=RegistrationStatus.attended,
-                )
-                db.add(organizer_registration)
-            else:
-                organizer_registration.status = RegistrationStatus.attended
-
-            # The new/updated row must be visible to the COUNT inside the
-            # recompute, so flush it before recalculating.
-            db.flush()
-            recalculate_reliability(db, organizer)
-            if organizer.reliability_score != before:
-                changes[str(organizer.id)] = organizer.reliability_score - before
-
+    # DEF-04 fix: the organiser must NOT be auto-marked as attended. Only
+    # registered participants ticked in ``attended_ids`` count toward the head
+    # count and earn credit, so the activity can never exceed its capacity and
+    # the organiser's credit is not inflated for merely running the event.
     activity.status = ActivityStatus.finished
     db.commit()
 

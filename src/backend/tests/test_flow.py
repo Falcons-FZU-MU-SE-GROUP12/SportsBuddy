@@ -328,7 +328,10 @@ def test_attendance_marks_no_show_and_recalculates_scores(client, register, make
     assert b_me["completed_count"] == 0
 
     organizer_me = client.get("/me", headers=organizer_headers).json()
-    assert organizer_me["completed_count"] == 1
+    # DEF-04: the organiser is no longer auto-marked attended, so their credit
+    # stays untouched by recording other people's attendance.
+    assert organizer_me["completed_count"] == 0
+    assert organizer_me["reliability_score"] == 80
 
 
 def test_only_organizer_can_record_attendance(client, register, make_activity):
