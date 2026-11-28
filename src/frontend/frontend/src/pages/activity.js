@@ -231,6 +231,13 @@ export function create(params = {}) {
   }
 
   function hero(d) {
+    // 已结束 / 已取消的活动再显示"X 小时后开始"会自相矛盾（DEF-02）
+    const hint =
+      d.status === ACT_STATUS.FINISHED
+        ? '已结束'
+        : d.status === ACT_STATUS.CANCELLED
+          ? '已取消'
+          : `${fmtRelative(d.start_time)}开始`
     return `<section class="sm-hero"><div class="sm-hero__inner sm-stack">
       <div class="sm-row sm-row--wrap">
         ${statusBadge(d.status)}
@@ -240,7 +247,7 @@ export function create(params = {}) {
         ${d.gender_limit && d.gender_limit !== 'any' ? tag(d.gender_limit === 'female' ? '限女生' : '限男生', 'warn') : ''}
       </div>
       <h1 class="sm-hero__title">${esc(d.title)}</h1>
-      <div class="sm-card__hint">${esc(fmtRelative(d.start_time))}开始 · ${esc(fmtRange(d.start_time, d.end_time))}</div>
+      <div class="sm-card__hint">${esc(hint)} · ${esc(fmtRange(d.start_time, d.end_time))}</div>
     </div></section>`
   }
 
@@ -334,7 +341,9 @@ export function create(params = {}) {
   }
 
   function participantsCard(d) {
-    const list = d.participants ?? []
+    // 真实后端的 participants 含 status='cancelled' 的记录（mock 不含），
+    // 不过滤的话头部计数「参与者（N/容量）」会与 joined_count 对不上（DEF-01）。
+    const list = (d.participants ?? []).filter((p) => p.status !== 'cancelled')
     const checked = list.filter((p) => ['checked_in', 'attended'].includes(p.status)).length
     return `<section class="sm-card">
       <div class="sm-row sm-row--between">
