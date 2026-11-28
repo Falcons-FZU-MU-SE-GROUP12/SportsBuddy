@@ -1,0 +1,30 @@
+E2E 开始  2026-11-28T08:19:34.798Z
+后端 http://127.0.0.1:8000   前端 http://127.0.0.1:5178/frontend/   输出 D:\EE308\alpha\e2e
+账号：e2e_org_974785(id=1) / e2e_alice_974785(id=2) / e2e_bob_974785(id=3)
+活动 id=1  2026-11-28T08:21:05.193Z → 2026-11-28T08:22:05.193Z  容量 2
+bob 已先报名（占 1 个名额），剩 1 个给 alice
+签到码 1228
+  截图 D:\EE308\alpha\e2e\01-login-form.png
+PASS  登录页渲染  —  输入框与登录按钮可见
+  截图 D:\EE308\alpha\e2e\02-login-success.png
+PASS  UI 登录（真实后端 POST /auth/login）  —  登录成功并持久化 token
+  截图 D:\EE308\alpha\e2e\03-activities.png
+PASS  找局列表加载  —  GET /activities 渲染出刚建的活动
+  截图 D:\EE308\alpha\e2e\04-detail-open.png
+PASS  列表 → 详情跳转  —  #/activity/1
+  截图 D:\EE308\alpha\e2e\05-join-sheet.png
+  截图 D:\EE308\alpha\e2e\06-joined.png
+PASS  UI 报名（POST /join）  —  joined=2/2, alice=registered
+  截图 D:\EE308\alpha\e2e\07-checkin-sheet.png
+  截图 D:\EE308\alpha\e2e\08-checked-in.png
+PASS  UI 签到（POST /checkin，签到码）  —  alice=checked_in, method=code
+等待活动结束（154s）…
+发起人考勤：alice / bob 均记为到场 {"activity_id":1,"attended":[3,2],"no_show":[],"score_changes":{"1":2,"3":2}}
+  截图 D:\EE308\alpha\e2e\09-detail-finished.png
+PASS  结束后详情出现「评价同场伙伴」  —  按钮可见（状态 finished + attended）
+  截图 D:\EE308\alpha\e2e\10-review-page.png
+PASS  详情 → 评价页跳转  —  #/review/1
+  截图 D:\EE308\alpha\e2e\11-review-submitted.png
+PASS  UI 提交评价（POST /reviews）  —  bob 收到 1 条评价，分数 5
+
+合计 9 步：通过 9，失败 0

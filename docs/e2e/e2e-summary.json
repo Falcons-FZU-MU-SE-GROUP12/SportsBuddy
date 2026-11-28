@@ -1,0 +1,53 @@
+{
+  "when": "2026-11-28T08:22:21.052Z",
+  "api": "http://127.0.0.1:8000",
+  "web": "http://127.0.0.1:5178/frontend/",
+  "tokenFallbackUsed": false,
+  "steps": [
+    {
+      "name": "登录页渲染",
+      "ok": true,
+      "detail": "输入框与登录按钮可见"
+    },
+    {
+      "name": "UI 登录（真实后端 POST /auth/login）",
+      "ok": true,
+      "detail": "登录成功并持久化 token"
+    },
+    {
+      "name": "找局列表加载",
+      "ok": true,
+      "detail": "GET /activities 渲染出刚建的活动"
+    },
+    {
+      "name": "列表 → 详情跳转",
+      "ok": true,
+      "detail": "#/activity/1"
+    },
+    {
+      "name": "UI 报名（POST /join）",
+      "ok": true,
+      "detail": "joined=2/2, alice=registered"
+    },
+    {
+      "name": "UI 签到（POST /checkin，签到码）",
+      "ok": true,
+      "detail": "alice=checked_in, method=code"
+    },
+    {
+      "name": "结束后详情出现「评价同场伙伴」",
+      "ok": true,
+      "detail": "按钮可见（状态 finished + attended）"
+    },
+    {
+      "name": "详情 → 评价页跳转",
+      "ok": true,
+      "detail": "#/review/1"
+    },
+    {
+      "name": "UI 提交评价（POST /reviews）",
+      "ok": true,
+      "detail": "bob 收到 1 条评价，分数 5"
+    }
+  ]
+}
