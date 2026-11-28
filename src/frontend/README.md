@@ -332,12 +332,36 @@ http://127.0.0.1:5178/frontend/?mock=0#/activity/4   # 低信用分演示
 
 ---
 
+## 四点八、活动详情联调（Issue #8）
+
+Alpha Sprint 的 #8「Activity detail page」把 P-04 详情页按四种状态接真实后端验证，
+并修掉两个详情页自己的问题：① 真实后端的 `participants` 含 `cancelled` 记录，头部计数会与
+`joined_count` 对不上（前端已过滤）；② 已结束/已取消的活动顶部仍显示"X 小时后开始"（已按状态改写）。
+
+```powershell
+node tools/seed8.mjs     # 3 用户 + 4 个活动：可报名 / 已结束(到场+爽约) / 已取消 / 进行中
+node tools/verify.mjs    # 178 项：I 段 17 项为 #8 验收
+```
+
+登录 `org8 / sportmate123`（发起人视图）或 `mem8 / sportmate123`（参与者视图）打开：
+
+```text
+http://127.0.0.1:5178/frontend/?mock=0#/activity/1   # 可报名 + 参与者列表
+http://127.0.0.1:5178/frontend/?mock=0#/activity/2   # 已结束（到场 / 爽约状态可见）
+http://127.0.0.1:5178/frontend/?mock=0#/activity/3   # 已取消
+http://127.0.0.1:5178/frontend/?mock=0#/activity/4   # 进行中
+```
+
+验收对照、接口实测与 5 张运行截图见 [`docs/issue8-activity-detail.md`](../../docs/issue8-activity-detail.md)。
+
+---
+
 ## 五、自检与再生成
 
 "界面是否正确"用**程序化校验**兜底，不是靠肉眼：
 
 ```powershell
-node tools/verify.mjs                 # 161 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析 / #5 个人主页 / #7 活动列表 / #9 报名取消
+node tools/verify.mjs                 # 178 项：接口 / 业务规则 / 页面渲染 / 时区 / 匹配解析 / #5 个人主页 / #7 活动列表 / #9 报名取消 / #8 活动详情
 node tools/check-links.mjs            # 5 个入口页面的 js/css/svg 引用全部可达
 python tools/render-class-diagram.py  # 由 .mmd 生成 SVG + HTML
 python tools/check-class-diagram.py   # 类图几何校验：文字不溢出、连线不穿框、画布不截断
@@ -379,8 +403,9 @@ E. 一句话找局解析 ················· 14 项通过
 F. Issue #5 个人主页验收 ·········· 13 项通过
 G. Issue #7 活动列表验收 ·········· 28 项通过
 H. Issue #9 报名 / 取消验收 ········ 21 项通过
+I. Issue #8 活动详情验收 ·········· 17 项通过
 ────────────────────────────────────────
-全部通过：161 项检查
+全部通过：178 项检查
 ```
 
 类图几何校验：

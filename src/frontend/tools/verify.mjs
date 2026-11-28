@@ -889,6 +889,103 @@ await pageGuest.load()
 check('AC1 未登录时详情页引导登录报名', pageGuest.view().includes('登录后即可报名'))
 
 /* ===================================================================== */
+/* I. Issue #8 活动详情                                                    */
+/* ===================================================================== */
+
+section('I. Issue #8 活动详情验收（AC1 按 id 加载 / AC2 参与者与状态可见 / AC3 发起人看到管理入口）')
+
+// 可控的详情响应：参与者里故意带一条 status='cancelled'，验证前端过滤（DEF-01）
+const mkDetail = (over = {}) => ({
+  id: 888,
+  title: '自检活动 · 详情页',
+  sport: '羽毛球',
+  description: '联调自检用。',
+  campus: '旗山校区',
+  location: '体育馆 3 号场',
+  start_time: '2026-11-30T10:00:00',
+  end_time: '2026-11-30T12:00:00',
+  skill_level: 'any',
+  capacity: 6,
+  gender_limit: 'any',
+  fee: 0,
+  status: 'open',
+  organizer: { id: 1, nickname: '林浩', reliability_score: 88 },
+  joined_count: 2,
+  slots_left: 4,
+  participants: [
+    { user_id: 2, nickname: '阿明', skill_level: 'beginner', reliability_score: 80, status: 'attended', note: '', checked_in_at: '2026-11-30T09:50:00', checkin_method: 'code' },
+    { user_id: 3, nickname: '阿花', skill_level: 'any', reliability_score: 60, status: 'no_show', note: '下次再来', checked_in_at: null, checkin_method: null },
+    { user_id: 4, nickname: '退了', skill_level: 'any', reliability_score: 80, status: 'cancelled', note: '', checked_in_at: null, checkin_method: null },
+  ],
+  checkin_code: null,
+  ...over,
+})
+
+const realGetActivity8 = api.getActivity
+const realGetMine8 = api.getMyActivities
+
+async function renderDetail(detail, { meId = 1, joinedIds = [] } = {}) {
+  api.getActivity = async () => detail
+  api.getMyActivities = async () => ({ organized: [], joined: joinedIds.map((id) => ({ id })) })
+  setSession({ id: meId, nickname: '我', reliability_score: 80 })
+  const page = (await import('../frontend/src/pages/activity.js')).create({ id: '888' })
+  await page.load()
+  return page.view()
+}
+
+// AC1：按 id 加载出完整信息
+let html8 = await renderDetail(mkDetail())
+check('AC1 详情按 id 渲染出标题', html8.includes('自检活动 · 详情页'))
+check('AC1 渲染时间 / 地点 / 人数 / 发起人四个信息块', html8.includes('时间') && html8.includes('地点') && html8.includes('人数') && html8.includes('发起人'))
+check('AC1 渲染人数 2/6 与剩余名额', html8.includes('2/6') && html8.includes('还差 4 人'))
+
+// AC2：参与者与状态可见；cancelled 记录被过滤（DEF-01）
+check('AC2 参与者昵称可见', html8.includes('阿明') && html8.includes('阿花'))
+check('AC2 参与状态标签正确（已到场 / 爽约）', html8.includes('已到场') && html8.includes('爽约'))
+check('AC2 已取消的报名不显示在参与者列表', !html8.includes('退了'), 'cancelled 记录泄漏')
+check('AC2 参与者计数不含已取消（2/6 而非 3/6）', html8.includes('参与者（2/6）'), '计数与 joined_count 不一致')
+
+// AC3：发起人视图（checkin_code 非 null）vs 普通参与者
+html8 = await renderDetail(mkDetail({ checkin_code: '4410', joined_count: 2, slots_left: 4 }), { meId: 1 })
+check('AC3 发起人看到「你是发起人」与「记录考勤」「取消活动」', html8.includes('你是发起人') && html8.includes('记录考勤') && html8.includes('取消活动'))
+check('AC3 发起人看到 4 位签到码卡片', html8.includes('签到码') && html8.includes('>4<') && html8.includes('>1<'), '签到码未渲染')
+html8 = await renderDetail(mkDetail(), { meId: 2, joinedIds: [888] })
+check(
+  'AC3 普通参与者看不到签到码卡片与管理入口',
+  !html8.includes('sm-card--brand') && !html8.includes('记录考勤'),
+  '越权可见'
+)
+
+// 状态联动：满员 / 进行中 / 已取消 / 已结束
+html8 = await renderDetail(mkDetail({ status: 'full', joined_count: 6, slots_left: 0 }), { meId: 5 })
+check('AC2 满员状态：按钮「名额已满」且禁用', html8.includes('名额已满') && /disabled/.test(html8.match(/<button[^>]*data-action="open-join"[^>]*>/)?.[0] ?? ''))
+html8 = await renderDetail(mkDetail({ status: 'ongoing', joined_count: 2, slots_left: 4 }), { meId: 5 })
+check('AC2 进行中状态：徽标与禁用按钮', html8.includes('进行中') && /disabled/.test(html8.match(/<button[^>]*data-action="open-join"[^>]*>/)?.[0] ?? ''))
+html8 = await renderDetail(mkDetail({ status: 'cancelled', joined_count: 0, slots_left: 6 }), { meId: 5 })
+check('AC2 已取消状态：红色提示且报名按钮禁用', html8.includes('已被发起人取消') && /disabled/.test(html8.match(/<button[^>]*data-action="open-join"[^>]*>/)?.[0] ?? ''))
+html8 = await renderDetail(
+  mkDetail({ status: 'finished', joined_count: 2, slots_left: 4, participants: [{ user_id: 2, nickname: '阿明', skill_level: 'beginner', reliability_score: 80, status: 'attended', note: '', checked_in_at: '2026-11-30T09:50:00', checkin_method: 'code' }] }),
+  { meId: 2, joinedIds: [888] }
+)
+check('AC2 已结束 + 已到场：出现「评价同场伙伴」', html8.includes('评价同场伙伴') && html8.includes('活动已结束'))
+check('AC2 已结束的活动顶部不再显示「开始」倒计时', html8.includes('已结束 · ') && !html8.includes('小时后开始'))
+html8 = await renderDetail(mkDetail({ status: 'cancelled', joined_count: 0, slots_left: 6 }), { meId: 5 })
+check('AC2 已取消的活动顶部显示「已取消」而非开始倒计时', html8.includes('已取消 · ') && !html8.includes('小时后开始'))
+
+// 404：不存在的活动
+api.getActivity = async () => {
+  throw { message: '活动不存在', isAuthError: false }
+}
+api.getMyActivities = async () => ({ organized: [], joined: [] })
+const page404 = (await import('../frontend/src/pages/activity.js')).create({ id: '9999' })
+await page404.load()
+check('AC1 不存在的活动显示错误与「返回活动列表」', page404.view().includes('活动不存在') && page404.view().includes('返回活动列表'))
+
+api.getActivity = realGetActivity8
+api.getMyActivities = realGetMine8
+setSession(null)
+
+/* ===================================================================== */
 /* 汇总                                                                  */
 /* ===================================================================== */
 
