@@ -17,18 +17,28 @@ export const api = {
    * 字段约束（前端要先校验，否则会收到 422）：
    *   username 3~32 位，只允许字母/数字/下划线；password 6~64 位；nickname 1~32 位。
    */
-  register(payload) {
+  async register(payload) {
     const { username, password, nickname, campus, skill_level, favorite_sports, phone } = payload
-    return http('/auth/register', {
+    const res = await http('/auth/register', {
       method: 'POST',
       auth: false,
       body: { username, password, nickname, campus, skill_level, favorite_sports, phone },
     })
+    // 注册即登录：后续的 GET /me 依赖这个 token，必须落盘（DEF-03）
+    if (res?.access_token) tokenStore.set(res.access_token)
+    return res
   },
 
   /** 登录。POST /auth/login —— token 有效期 30 天，401 表示过期。 */
-  login(username, password) {
-    return http('/auth/login', { method: 'POST', auth: false, body: { username, password } })
+  async login(username, password) {
+    const res = await http('/auth/login', {
+      method: 'POST',
+      auth: false,
+      body: { username, password },
+    })
+    // DEF-03：拿到 token 必须立刻持久化，否则紧跟的 GET /me 会 401
+    if (res?.access_token) tokenStore.set(res.access_token)
+    return res
   },
 
   /**
