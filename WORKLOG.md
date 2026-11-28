@@ -28,7 +28,7 @@
 | 2026-11-28 | zhangjt123 | 新增 | `src/backend/services.py`、`src/backend/converters.py`、`src/backend/schemas.py`、`src/backend/routers.py`、`src/backend/tests/test_issue16_reminders_acceptance.py` | 完成 Issue #16 站内提醒（简版）：新增 `GET /reminders` 返回我参与且即将开始的活动（不含已取消），含倒计时文案；3 条验收用例通过 | 作业五 |
 | 2026-11-28 | zhangjt123 | 修改 | `src/backend/tools/race_probe.py` | 订正 race_probe 头部注释：由「存在竞态窗口/复现缺陷」改为「DEF-01 已修复/回归验证」，与现状一致 | 作业五 |
 | 2026-11-28 | zhangjt123 | 修改 | `src/backend/render.yaml` | 修正 Render 部署：补 `rootDir: src/backend`、部署链接改指本仓库（main.py 在 src/backend 下） | 作业五 |
-| 2026-11-28 | zhangjt123 | 文档 | `docs/issue-close-evidence-2026-11-28.md` | 补充 Issue #4/#6/#10 关闭依据（验收测试文件、用例数、引用提交，全量 79 项 pytest 通过），供队长关闭 | 作业五 |
+| 2026-11-28 | zhangjt123 | 文档 | `docs/issue-close-evidence-2026-11-28.md` | 补充 Issue #4/#6/#10 关闭依据（验收测试文件、用例数、引用提交，全量 80 项 pytest 通过），供队长关闭 | 作业五 |
 | 2026-11-28 | 060725 | 修改 | `src/frontend/frontend/src/api/index.js` | 修复登录/注册未持久化 token 的阻断缺陷 DEF-03，真后端下可正常登录 | 作业五 |
 | 2026-11-28 | 060725 | 新增 | `src/frontend/tools/e2e.mjs`、`docs/e2e/`、`docs/test-logs-2026-11-28/`、`docs/test-report-2026-11-28.md` | 新增真实后端 UI E2E（login→review）与 11-28 回归报告与日志；README 测试命令同步更新 | 作业五 |
 | 2026-11-28 | Haoze Li | 修改 | `src/frontend/frontend/src/pages/activity.js`、`src/frontend/tools/verify.mjs`、`src/frontend/tools/seed8.mjs`、`src/frontend/README.md`、`docs/issue8-activity-detail.md`、`docs/shots/issue8-*.png` | 完成 Issue #8「Activity detail page」前端部分：详情页四种状态接真实后端验证，修参与者计数含已取消记录与已结束/已取消顶部倒计时文案，verify.mjs 178 项通过（新增 I 段 17 项），产出 5 张运行截图与验收文档 | 作业五 |
