@@ -1,16 +1,16 @@
-"""Black-box probe for the documented race in POST /activities/{id}/join.
+"""Concurrency regression probe for POST /activities/{id}/join (DEF-01).
 
-The backend README (§11) states:
-
-    "当前[检查容量 -> 写入报名]之间存在竞态窗口, 高并发下可能超员。"
+The "check capacity -> insert" race (DEF-01) is fixed: SQLite transactions now
+open with ``BEGIN IMMEDIATE`` and the join re-reads the head count under that
+lock, so an activity can no longer be over-subscribed.
 
 The in-process TestClient serialises everything through one SQLite connection,
-so the race cannot show up there. This probe therefore starts a real uvicorn
+so it cannot exercise concurrency. This probe therefore starts a real uvicorn
 server on a temporary file-backed database and fires N simultaneous sign-ups at
-an activity whose capacity is 1.
+an activity whose capacity is 2 (the API's smallest legal slot count).
 
-Exit code 0  -> no over-subscription observed (race not reproduced)
-Exit code 1  -> OVER-SUBSCRIPTION observed (defect reproduced)
+Exit code 0  -> capacity held, no over-subscription (fix verified)
+Exit code 1  -> OVER-SUBSCRIPTION observed (regression)
 """
 
 from __future__ import annotations
