@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from db import utcnow
 from models import Activity, Registration, User
 from schemas import (
     ActivityDetail,
@@ -9,6 +10,7 @@ from schemas import (
     OrganizerBrief,
     ParticipantOut,
     RegistrationOut,
+    ReminderOut,
 )
 
 
@@ -61,4 +63,22 @@ def activity_detail(activity: Activity, viewer: User | None) -> ActivityDetail:
         **base.model_dump(),
         participants=participants,
         checkin_code=activity.checkin_code if is_organizer else None,
+    )
+
+
+def reminder_out(activity: Activity) -> ReminderOut:
+    """Build an in-app reminder with a human-readable lead-time message."""
+    minutes = max(int((activity.start_time - utcnow()).total_seconds() // 60), 0)
+    if minutes < 1:
+        message = f"「{activity.title}」即将开始"
+    elif minutes < 60:
+        message = f"「{activity.title}」还有约 {minutes} 分钟开始"
+    elif minutes < 24 * 60:
+        message = f"「{activity.title}」还有约 {minutes // 60} 小时开始"
+    else:
+        message = f"「{activity.title}」还有约 {minutes // (24 * 60)} 天开始"
+    return ReminderOut(
+        activity=activity_out(activity),
+        starts_in_minutes=minutes,
+        message=message,
     )

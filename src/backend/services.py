@@ -382,6 +382,35 @@ def my_activities(db: Session, user: User) -> dict[str, list[Activity]]:
     return {"organized": organized, "joined": joined}
 
 
+def list_reminders(db: Session, user: User) -> list[Activity]:
+    """Upcoming, not-cancelled activities the user is involved in (issue #16).
+
+    "Involved in" means the user organises it or holds a non-cancelled
+    registration. Past and cancelled activities are excluded, and the result is
+    ordered by soonest start first.
+    """
+    now = utcnow()
+    joined = db.scalars(
+        select(Activity)
+        .join(Registration, Registration.activity_id == Activity.id)
+        .where(
+            Registration.user_id == user.id,
+            Registration.status != RegistrationStatus.cancelled,
+            Activity.start_time > now,
+            Activity.status != ActivityStatus.cancelled,
+        )
+    ).all()
+    organized = db.scalars(
+        select(Activity).where(
+            Activity.organizer_id == user.id,
+            Activity.start_time > now,
+            Activity.status != ActivityStatus.cancelled,
+        )
+    ).all()
+    unique = {activity.id: activity for activity in list(organized) + list(joined)}
+    return sorted(unique.values(), key=lambda activity: activity.start_time)
+
+
 # --------------------------------------------------------------------------- #
 # registration loop
 # --------------------------------------------------------------------------- #

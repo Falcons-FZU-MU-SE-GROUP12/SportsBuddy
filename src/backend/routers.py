@@ -25,6 +25,7 @@ from schemas import (
     MatchQuery,
     MatchResponse,
     RegistrationOut,
+    ReminderOut,
     ReviewCreate,
     ReviewOut,
     SportOut,
@@ -130,6 +131,19 @@ def read_user_reviews(
 def list_sports(db: Session = Depends(get_db)) -> list[SportOut]:
     sports = db.scalars(select(Sport).where(Sport.is_active.is_(True)).order_by(Sport.id)).all()
     return [SportOut.model_validate(s) for s in sports]
+
+
+# =========================================================================== #
+# reminders
+# =========================================================================== #
+@router.get("/reminders", response_model=list[ReminderOut],
+            summary="站内提醒：我参与且即将开始的活动（不含已取消）", tags=["提醒"])
+def read_reminders(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[ReminderOut]:
+    activities = services.list_reminders(db, user)
+    return [converters.reminder_out(activity) for activity in activities]
 
 
 # =========================================================================== #

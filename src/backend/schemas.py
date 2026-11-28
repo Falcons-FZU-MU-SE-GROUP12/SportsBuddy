@@ -174,6 +174,14 @@ class ActivityDetail(ActivityOut):
     checkin_code: str | None = None
 
 
+class ReminderOut(BaseModel):
+    """One in-app reminder for an upcoming activity (issue #16)."""
+
+    activity: ActivityOut
+    starts_in_minutes: int
+    message: str
+
+
 # --------------------------------------------------------------------------- #
 # Registration / check-in / attendance
 # --------------------------------------------------------------------------- #
